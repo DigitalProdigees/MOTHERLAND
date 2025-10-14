@@ -1,20 +1,31 @@
-import GradientBackButton from '@/components/ui/gradient-back-button';
 import GradientButton from '@/components/ui/gradient-button';
+import Header from '@/components/ui/header';
+import LoadingModal from '@/components/ui/loading-modal';
+import { Fonts, Icons } from '@/constants/theme';
+import { auth } from '@/firebase.config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Keyboard, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
+import { Alert, Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
   const router = useRouter();
   const [currentSection, setCurrentSection] = useState(1);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('tamoormalik088@gmail.com');
+  const [password, setPassword] = useState('88888888');
   const [rememberMe, setRememberMe] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [preservedFormData, setPreservedFormData] = useState<{email: string, password: string} | null>(null);
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  });
   const scrollViewRef = useRef<ScrollView>(null);
-  
-  // Get screen dimensions for dynamic content height
-  const { height: screenHeight } = Dimensions.get('window');
+  const emailRef = useRef<View>(null);
+  const passwordRef = useRef<View>(null);
 
   // Animation values for section transitions
   const section1TranslateX = useState(new Animated.Value(0))[0];
@@ -37,6 +48,15 @@ export default function SignInScreen() {
       keyboardDidHideListener.remove();
     };
   }, [currentSection]);
+
+  // Restore form data when loading finishes
+  useEffect(() => {
+    if (!isLoading && preservedFormData) {
+      setEmail(preservedFormData.email);
+      setPassword(preservedFormData.password);
+      setPreservedFormData(null);
+    }
+  }, [isLoading, preservedFormData]);
 
   const animateToSection2 = () => {
     Animated.parallel([
@@ -107,13 +127,19 @@ export default function SignInScreen() {
   };
 
   const handleGoogleSignIn = () => {
-    // TODO: Implement Google sign in
-    console.log('Google sign in');
+    Alert.alert(
+      'Coming Soon',
+      'Google Sign In will be available soon!',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleAppleSignIn = () => {
-    // TODO: Implement Apple sign in
-    console.log('Apple sign in');
+    Alert.alert(
+      'Coming Soon',
+      'Apple Sign In will be available soon!',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleBack = () => {
@@ -122,18 +148,125 @@ export default function SignInScreen() {
     setTimeout(() => setCurrentSection(1), 50);
   };
 
-  const handleSignIn = () => {
-    // TODO: Implement sign in
-    console.log('Sign in:', { email, password });
-    router.replace('/(home)/home');
+  const handleSignIn = async () => {
+    if (!isFormValid()) {
+      Alert.alert('Error', 'Please fill in all fields correctly');
+      return;
+    }
+
+    // Store current values in preserved state
+    setPreservedFormData({ email, password });
+    setIsLoading(true);
+    
+    try {
+      // Sign in with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      console.log('Sign in successful:', { uid: user.uid, email: user.email });
+      
+      // Navigate to home screen
+      router.replace('/(home)/home');
+      
+    } catch (error: any) {
+      
+      let errorMessage = 'Failed to sign in. Please try again.';
+      
+      // Handle specific Firebase error codes
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please sign up first.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format.';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled. Please contact support.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password. Please try again.';
+      }
+      
+      Alert.alert('Sign In Failed', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignUp = () => {
-    router.push('/(auth)/signup');
+    router.replace('/(auth)/signup');
   };
 
   const toggleRememberMe = () => {
     setRememberMe(!rememberMe);
+  };
+
+  const scrollToInput = (inputRef: React.RefObject<View | null>) => {
+    if (inputRef.current && scrollViewRef.current) {
+      setTimeout(() => {
+        inputRef.current?.measureLayout(
+          scrollViewRef.current as any,
+          (x, y) => {
+            scrollViewRef.current?.scrollTo({ y: y-300, animated: true });
+          },
+          () => {}
+        );
+      }, 100);
+    }
+  };
+
+  const validateEmail = (email: string) => {
+    if (!email.trim()) {
+      return 'Email is required';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    return '';
+  };
+
+  const validatePassword = (password: string) => {
+    if (!password) {
+      return 'Password is required';
+    }
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    return '';
+  };
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    // Clear error when user starts typing
+    if (errors.email) {
+      setErrors({ ...errors, email: '' });
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    // Clear error when user starts typing
+    if (errors.password) {
+      setErrors({ ...errors, password: '' });
+    }
+  };
+
+  const handleBlurEmail = () => {
+    setFocusedInput(null);
+    setErrors({ ...errors, email: validateEmail(email) });
+  };
+
+  const handleBlurPassword = () => {
+    setFocusedInput(null);
+    setErrors({ ...errors, password: validatePassword(password) });
+  };
+
+  const isFormValid = () => {
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    
+    return !emailError && !passwordError;
   };
 
   const renderSection1 = () => (
@@ -153,7 +286,7 @@ export default function SignInScreen() {
         >
           <View style={section1Styles.optionContent}>
             <View style={section1Styles.emailIcon}>
-              <Text style={section1Styles.emailIconText}>✉</Text>
+              <Icons.Email width={24} height={24} />
             </View>
             <Text style={section1Styles.optionText}>Email</Text>
           </View>
@@ -169,7 +302,7 @@ export default function SignInScreen() {
         >
           <View style={section1Styles.optionContent}>
             <View style={section1Styles.googleIcon}>
-              <Text style={section1Styles.googleIconText}>G</Text>
+            <Icons.Google width={32} height={32} />
             </View>
             <Text style={section1Styles.optionText}>Google ID</Text>
           </View>
@@ -185,7 +318,7 @@ export default function SignInScreen() {
         >
           <View style={section1Styles.optionContent}>
             <View style={section1Styles.appleIcon}>
-              <Text style={section1Styles.appleIconText}>🍎</Text>
+              <Icons.Apple width={32} height={32} />
             </View>
             <Text style={section1Styles.optionText}>Apple ID</Text>
           </View>
@@ -196,53 +329,74 @@ export default function SignInScreen() {
 
   const renderSection2 = () => (
     <>
-      {/* Back button */}
-      <GradientBackButton onPress={handleBack} />
-      <View style={{marginTop:25}}/>
-
-      {/* Title */}
-      <Text style={section2Styles.title}>Hi! Welcome Back</Text>
-      <Text style={section2Styles.subtitle}>Login to your account</Text>
+      {/* Header */}
+      <Header 
+        title="Hi! Welcome Back"
+        subtitle="Login to your account"
+        onBackPress={handleBack}
+      />
       
       {/* Input fields */}
       <View style={section2Styles.inputContainer}>
         {/* Email */}
-        <View style={section2Styles.inputField}>
-          <View style={section2Styles.inputIcon}>
-            <Text style={section2Styles.inputIconText}>✉</Text>
-          </View>
-          <View style={section2Styles.inputContent}>
-            <Text style={section2Styles.inputLabel}>Email</Text>
+        <View style={section2Styles.fieldWrapper} ref={emailRef}>
+          <Text style={section2Styles.inputLabel}>Email</Text>
+          <View style={[
+            section2Styles.inputField,
+            focusedInput === 'email' && section2Styles.inputFieldFocused,
+            errors.email && section2Styles.inputFieldError
+          ]}>
+            <View style={section2Styles.inputIcon}>
+              <Icons.Email width={24} height={24} />
+            </View>
             <TextInput
               style={section2Styles.input}
               placeholder="example@email.com"
               placeholderTextColor="#999"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={handleEmailChange}
+              onFocus={() => {
+                setFocusedInput('email');
+                scrollToInput(emailRef);
+              }}
+              onBlur={handleBlurEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
           </View>
+          {errors.email ? <Text style={section2Styles.errorText}>{errors.email}</Text> : null}
         </View>
 
         {/* Password */}
-        <View style={section2Styles.inputField}>
-          <View style={section2Styles.inputIcon}>
-            <Text style={section2Styles.inputIconText}>🔒</Text>
-          </View>
-          <View style={section2Styles.inputContent}>
-            <Text style={section2Styles.inputLabel}>Password</Text>
+        <View style={section2Styles.fieldWrapper} ref={passwordRef}>
+          <Text style={section2Styles.inputLabel}>Password</Text>
+          <View style={[
+            section2Styles.inputField,
+            focusedInput === 'password' && section2Styles.inputFieldFocused,
+            errors.password && section2Styles.inputFieldError
+          ]}>
+            <View style={section2Styles.inputIcon}>
+              <Icons.Password width={24} height={24} />
+            </View>
             <TextInput
-              style={section2Styles.input}
+              style={[section2Styles.input, { color: '#000000' }]}
               placeholder="Password"
               placeholderTextColor="#999"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={handlePasswordChange}
+              onFocus={() => {
+                setFocusedInput('password');
+                scrollToInput(passwordRef);
+              }}
+              onBlur={handleBlurPassword}
               secureTextEntry
               autoCapitalize="none"
+              selectionColor="#8A53C2"
+              importantForAutofill="no"
             />
           </View>
+          {errors.password ? <Text style={section2Styles.errorText}>{errors.password}</Text> : null}
         </View>
       </View>
       
@@ -272,24 +426,11 @@ export default function SignInScreen() {
           )}
           <Text style={section2Styles.rememberMeText}>Remember me</Text>
         </Pressable>
-        <Pressable onPress={() => console.log('Forgot password')}>
+        <Pressable onPress={() => router.push('/(auth)/forgot-password')}>
           <Text style={section2Styles.forgotPasswordText}>Forgot Password?</Text>
         </Pressable>
       </View>
 
-      {/* Spacer to push button to bottom */}
-      <View style={{ minHeight: 200 }} />
-
-      {/* Login button and signup text - Inside ScrollView */}
-      <View style={section2Styles.footerInScroll}>
-        <GradientButton
-          title="Login"
-          onPress={handleSignIn}
-        />
-        <Text style={footerStyles.section2FooterText}>
-          Don't have an account? <Pressable onPress={handleSignUp}><Text style={footerStyles.signUpText}>Sign Up</Text></Pressable>
-        </Text>
-      </View>
     </>
   );
 
@@ -305,7 +446,9 @@ export default function SignInScreen() {
                 { translateX: section1TranslateX },
                 { scale: section1Scale }
               ],
+              opacity: currentSection === 1 ? 1 : 0,
               pointerEvents: currentSection === 1 ? 'auto' : 'none',
+              paddingHorizontal: 32,
             },
           ]}
         >
@@ -321,27 +464,31 @@ export default function SignInScreen() {
                 { translateX: section2TranslateX },
                 { scale: section2Scale }
               ],
+              opacity: currentSection === 2 ? 1 : 0,
               pointerEvents: currentSection === 2 ? 'auto' : 'none',
             },
           ]}
         >
-          <ScrollView
-            ref={scrollViewRef}
+          <KeyboardAvoidingView
             style={{ flex: 1 }}
-            contentContainerStyle={{ 
-              minHeight: screenHeight + 200,
-              paddingBottom:50
-            }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            bounces={true}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View>
-                {renderSection2()}
-              </View>
-            </TouchableWithoutFeedback>
-          </ScrollView>
+            <ScrollView
+              ref={scrollViewRef}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 150 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={true}
+            >
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View>
+                  {renderSection2()}
+                </View>
+              </TouchableWithoutFeedback>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </Animated.View>
       </View>
 
@@ -355,6 +502,22 @@ export default function SignInScreen() {
           />
         </View>
       )}
+
+      {/* Footer - Fixed at bottom - Only for Section 2 */}
+      {currentSection === 2 && (
+        <View style={footerStyles.footer}>
+          <GradientButton
+            title={isLoading ? "Signing in..." : "Login"}
+            onPress={handleSignIn}
+            disabled={!isFormValid() || isLoading}
+          />
+          <Text style={footerStyles.section2FooterText}>
+            Don't have an account? <Pressable onPress={handleSignUp}><Text style={footerStyles.signUpText}>Sign Up</Text></Pressable>
+          </Text>
+        </View>
+      )}
+
+      <LoadingModal visible={isLoading} message="Signing you in..." />
     </SafeAreaView>
   );
 }
@@ -363,7 +526,7 @@ export default function SignInScreen() {
 const section1Styles = StyleSheet.create({
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: Fonts.bold,
     color: '#000000',
     textAlign: 'center',
     marginBottom: 60,
@@ -374,11 +537,12 @@ const section1Styles = StyleSheet.create({
     alignSelf: 'center',
   },
   optionButton: {
-    backgroundColor: 'rgba(138, 83, 194, 0.03)',
+    backgroundColor: '#8A53C210',
     borderRadius: 100,
     marginBottom: 16,
     height: 56,
     justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -400,10 +564,6 @@ const section1Styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  emailIconText: {
-    fontSize: 18,
-    color: '#8B5CF6',
-  },
   googleIcon: {
     width: 24,
     height: 24,
@@ -413,7 +573,7 @@ const section1Styles = StyleSheet.create({
   },
   googleIconText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: Fonts.bold,
     color: '#8B5CF6',
   },
   appleIcon: {
@@ -423,14 +583,10 @@ const section1Styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  appleIconText: {
-    fontSize: 18,
-    color: '#8B5CF6',
-  },
   optionText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
+    fontFamily: Fonts.semiBold,
+    color: '#8A53C2',
   },
 });
 
@@ -438,33 +594,42 @@ const section1Styles = StyleSheet.create({
 const section2Styles = StyleSheet.create({
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: Fonts.bold,
     color: '#000000',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 60,
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: Fonts.regular,
     color: '#666666',
     textAlign: 'center',
     marginBottom: 40,
   },
   inputContainer: {
     width: '100%',
-    maxWidth: 320,
     alignSelf: 'center',
+    marginTop: 32,
     marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  fieldWrapper: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontFamily: Fonts.semiBold,
+    color: '#000000',
+    marginBottom: 4,
+    marginLeft: 4,
   },
   inputField: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(138, 3, 194, 0.03)',
+    backgroundColor: '#8A53C210',
     borderRadius: 100,
-    marginBottom: 16,
     height: 56,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -474,6 +639,21 @@ const section2Styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  inputFieldFocused: {
+    borderWidth: 1,
+    borderColor: '#8A53C2',
+  },
+  inputFieldError: {
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#FF3B30',
+    marginTop: 4,
+    marginLeft: 4,
+  },
   inputIcon: {
     width: 24,
     height: 24,
@@ -481,32 +661,23 @@ const section2Styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  inputIconText: {
-    fontSize: 18,
-    color: '#8B5CF6',
-  },
-  inputContent: {
-    flex: 1,
-  },
-  inputLabel: {
-    fontSize: 12,
-    color: '#8B5CF6',
-    marginBottom: 2,
-    fontWeight: '500',
-  },
   input: {
+    flex: 1,
     fontSize: 16,
-    color: '#000000',
+    fontFamily: Fonts.regular,
+    color: '#000000 !important',
     padding: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    maxWidth: 320,
     alignSelf: 'center',
     marginBottom: 20,
+    paddingHorizontal: 16,
   },
   rememberMeContainer: {
     flexDirection: 'row',
@@ -548,17 +719,13 @@ const section2Styles = StyleSheet.create({
   },
   rememberMeText: {
     fontSize: 14,
+    fontFamily: Fonts.regular,
     color: '#000000',
   },
   forgotPasswordText: {
     fontSize: 14,
+    fontFamily: Fonts.medium,
     color: '#222222',
-    fontWeight: '500',
-  },
-  footerInScroll: {
-    alignItems: 'center',
-    width: '100%',
-    paddingTop: 50,
   },
 });
 
@@ -568,24 +735,24 @@ const footerStyles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 32,
-    paddingBottom: 32,
-    paddingTop: 20
+    paddingTop: 20,
   },
   section1FooterText: {
     fontSize: 16,
+    fontFamily: Fonts.semiBold,
     color: '#000000',
     marginBottom: 20,
-    textAlign: 'center',
   },
   section2FooterText: {
     fontSize: 16,
+    fontFamily: Fonts.regular,
     color: '#000000',
     marginTop: 10,
     textAlign: 'center',
   },
   signUpText: {
     color: '#F708F7',
-    fontWeight: '600',
+    fontFamily: Fonts.bold,
     fontSize: 16,
     top: 4,
   },
@@ -605,7 +772,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    paddingHorizontal: 32,
-    paddingTop: 20,
   },
 });

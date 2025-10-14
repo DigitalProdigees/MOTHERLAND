@@ -1,6 +1,9 @@
-import { ThemedView } from '@/components/themed-view';
+import GradientButton from '@/components/ui/gradient-button';
+import Header from '@/components/ui/header';
+import { Fonts } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TermsScreen() {
   const router = useRouter();
@@ -9,14 +12,17 @@ export default function TermsScreen() {
     router.push('/(auth)/privacy-policy');
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Terms of Service</Text>
-        <Text style={styles.subtitle}>
-          Please read and accept our terms
-        </Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <Header 
+        title="Terms of Service"
+        subtitle="Please read and accept our terms"
+        onBackPress={handleBack}
+      />
 
       <ScrollView 
         style={styles.scrollView}
@@ -65,40 +71,23 @@ export default function TermsScreen() {
       </ScrollView>
 
       <View style={styles.buttonContainer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.acceptButton,
-            { opacity: pressed ? 0.7 : 1 }
-          ]}
+        <GradientButton
+          title="Accept & Continue"
           onPress={handleAccept}
-        >
-          <Text style={styles.acceptButtonText}>Accept & Continue</Text>
-        </Pressable>
+        />
       </View>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: 24,
-  },
-  header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
+    paddingHorizontal: 24,
     marginBottom: 20,
   },
   contentContainer: {
@@ -106,30 +95,24 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
     marginTop: 20,
     marginBottom: 8,
+    color: '#000000',
   },
   paragraph: {
     fontSize: 14,
+    fontFamily: Fonts.regular,
     lineHeight: 22,
     opacity: 0.8,
     marginBottom: 12,
+    color: '#000000',
   },
   buttonContainer: {
-    paddingBottom: 40,
-  },
-  acceptButton: {
+    alignItems: 'center',
     width: '100%',
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 8,
-  },
-  acceptButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 0,
   },
 });
 

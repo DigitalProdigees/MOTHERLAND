@@ -22,13 +22,13 @@ export default function GradientButton({
       style={({ pressed }) => [
         styles.button,
         style,
-        { opacity: pressed ? 0.8 : 1 }
+        { opacity: disabled ? 0.5 : (pressed ? 0.8 : 1) }
       ]}
       onPress={onPress}
       disabled={disabled}
     >
       <LinearGradient
-        colors={['#F708F7', '#C708F7', '#F76B0B']}
+        colors={disabled ? ['#CCCCCC', '#999999', '#CCCCCC'] : ['#F708F7', '#C708F7', '#F76B0B']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1.2, y: 0 }}
         style={styles.gradient}

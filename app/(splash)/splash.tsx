@@ -1,7 +1,6 @@
-import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -16,14 +15,13 @@ export default function SplashScreen() {
   }, [router]);
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>MotherLand Jams</Text>
-        <Text style={styles.subtitle}>
-          Your Music Journey Awaits
-        </Text>
-      </View>
-    </ThemedView>
+    <View style={styles.container}>
+      <Image 
+        source={require('@/assets/images/logo.png')} 
+        style={styles.logo}
+        resizeMode="contain"
+      />
+    </View>
   );
 }
 
@@ -32,22 +30,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#FFFFFF',
   },
-  content: {
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 16,
-    color: '#FFFFFF',
-  },
-  subtitle: {
-    fontSize: 18,
-    textAlign: 'center',
-    opacity: 0.8,
-    color: '#CCCCCC',
+  logo: {
+    width: 300,
+    height: 300,
   },
 });

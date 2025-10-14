@@ -1,89 +1,55 @@
+import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Animated, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Dimensions, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import Carousel, { ICarouselInstance } from 'react-native-reanimated-carousel';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const [currentSection, setCurrentSection] = useState(1);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const { width: screenWidth } = Dimensions.get('window');
+  const carouselRef = useRef<ICarouselInstance>(null);
   
-  // Animation values for each indicator
-  const indicator1Width = useState(new Animated.Value(1))[0];
-  const indicator1Opacity = useState(new Animated.Value(1))[0];
-  const indicator2Width = useState(new Animated.Value(0.3))[0];
-  const indicator2Opacity = useState(new Animated.Value(0.3))[0];
-  const indicator3Width = useState(new Animated.Value(0.3))[0];
-  const indicator3Opacity = useState(new Animated.Value(0.3))[0];
-
-  const animateIndicators = (newSection: number) => {
-    const duration = 100;
-    
-    // Reset all indicators to inactive state
-    const resetAnimations = [
-      Animated.parallel([
-        Animated.timing(indicator1Width, { toValue: 0.3, duration, useNativeDriver: false }),
-        Animated.timing(indicator1Opacity, { toValue: 0.3, duration, useNativeDriver: false }),
-      ]),
-      Animated.parallel([
-        Animated.timing(indicator2Width, { toValue: 0.3, duration, useNativeDriver: false }),
-        Animated.timing(indicator2Opacity, { toValue: 0.3, duration, useNativeDriver: false }),
-      ]),
-      Animated.parallel([
-        Animated.timing(indicator3Width, { toValue: 0.3, duration, useNativeDriver: false }),
-        Animated.timing(indicator3Opacity, { toValue: 0.3, duration, useNativeDriver: false }),
-      ]),
-    ];
-
-    // Animate the active indicator
-    let activeAnimation: Animated.CompositeAnimation | null = null;
-    switch (newSection) {
-      case 1:
-        activeAnimation = Animated.parallel([
-          Animated.timing(indicator1Width, { toValue: 1, duration, useNativeDriver: false }),
-          Animated.timing(indicator1Opacity, { toValue: 1, duration, useNativeDriver: false }),
-        ]);
-        break;
-      case 2:
-        activeAnimation = Animated.parallel([
-          Animated.timing(indicator2Width, { toValue: 1, duration, useNativeDriver: false }),
-          Animated.timing(indicator2Opacity, { toValue: 1, duration, useNativeDriver: false }),
-        ]);
-        break;
-      case 3:
-        activeAnimation = Animated.parallel([
-          Animated.timing(indicator3Width, { toValue: 1, duration, useNativeDriver: false }),
-          Animated.timing(indicator3Opacity, { toValue: 1, duration, useNativeDriver: false }),
-        ]);
-        break;
-    }
-
-    // Run animations
-    Animated.parallel(resetAnimations).start(() => {
-      if (activeAnimation) {
-        activeAnimation.start();
-      }
-    });
-  };
+  // Carousel data
+  const carouselData = [
+    {
+      title: 'Discover Amazing Music',
+      subtitle: 'Explore a world of authentic sounds and discover your next favorite artist.',
+      imageSource: require('@/assets/images/carousal1.png'),
+    },
+    {
+      title: 'Connect & Share',
+      subtitle: 'Join a community of music lovers and share your favorite tracks.',
+      imageSource: require('@/assets/images/carousal2.png'),
+    },
+    {
+      title: 'Start Your Journey',
+      subtitle: 'Create your account and dive into the world of MotherLand Jams',
+      imageSource: require('@/assets/images/carousal3.png'),
+    },
+  ];
 
   const handleNext = () => {
-    if (currentSection < 3) {
-      const newSection = currentSection + 1;
-      setCurrentSection(newSection);
-      animateIndicators(newSection);
+    if (currentIndex < carouselData.length - 1) {
+      carouselRef.current?.scrollTo({ index: currentIndex + 1, animated: true });
     } else {
-      // Navigate to signin after section 3
+      // Navigate to signin after last slide
       router.replace('/(auth)/signin');
     }
   };
 
   const handleBack = () => {
-    if (currentSection > 1) {
-      const newSection = currentSection - 1;
-      setCurrentSection(newSection);
-      animateIndicators(newSection);
+    if (currentIndex > 0) {
+      carouselRef.current?.scrollTo({ index: currentIndex - 1, animated: true });
     }
+  };
+
+  const onSnapToItem = (index: number) => {
+    setCurrentIndex(index);
   };
 
   const handleSkip = () => {
@@ -91,37 +57,19 @@ export default function OnboardingScreen() {
     router.replace('/(auth)/signin');
   };
 
-  const getSectionContent = () => {
-    switch (currentSection) {
-      case 1:
-        return {
-          title: 'Lorem ipsum dolor',
-          subtitle: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.',
-          imageUri: 'https://picsum.photos/300/400?random=1', // Placeholder image
-        };
-      case 2:
-        return {
-          title: 'Explore Great Music',
-          subtitle: 'Browse through our curated collection of authentic sounds',
-          imageUri: 'https://picsum.photos/300/400?random=2',
-        };
-      case 3:
-        return {
-          title: 'Start Your Journey',
-          subtitle: 'Create your account and dive into the world of MotherLand Jams',
-          imageUri: 'https://picsum.photos/300/400?random=3',
-        };
-      default:
-        return {
-          title: '',
-          subtitle: '',
-          imageUri: '',
-        };
-    }
-  };
-
-  const content = getSectionContent();
-  const nextButtonText = 'Next';
+  const renderCarouselItem = ({ item, index }: { item: any; index: number }) => (
+    <View style={styles.carouselItem}>
+      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.subtitle}>{item.subtitle}</Text>
+      <View style={styles.imageContainer}>
+        <Image
+          source={item.imageSource}
+          style={styles.carousalImage}
+          resizeMode="contain"
+        />
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -140,73 +88,42 @@ export default function OnboardingScreen() {
         </View>
       </View>
 
-      {/* Content area */}
-      <View style={styles.contentArea}>
-        {/* Title */}
-        <Text style={styles.title}>{content.title}</Text>
+      {/* Carousel Content */}
+      <View style={styles.carouselContainer}>
+        <Carousel
+          ref={carouselRef}
+          loop={false}
+          width={screenWidth}
+          data={carouselData}
+          renderItem={renderCarouselItem}
+          onSnapToItem={onSnapToItem}
+          defaultIndex={0}
+          autoPlay={false}
+          scrollAnimationDuration={300}
+        />
         
-        {/* Subtitle */}
-        <Text style={styles.subtitle}>{content.subtitle}</Text>
-        
-        {/* Placeholder Image */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: content.imageUri }}
-            style={styles.placeholderImage}
-            resizeMode="cover"
-          />
-        </View>
+   
       </View>
 
       {/* Fixed bottom section */}
       <View style={styles.bottomSection}>
         {/* Progress indicator dots */}
         <View style={styles.dotsContainer}>
-          <Animated.View
-            style={[
-              styles.indicator,
-              currentSection === 1 ? styles.activeIndicator : styles.inactiveIndicator,
-              {
-                width: indicator1Width.interpolate({
-                  inputRange: [0.3, 1],
-                  outputRange: [12, 32],
-                }),
-                opacity: indicator1Opacity,
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.indicator,
-              currentSection === 2 ? styles.activeIndicator : styles.inactiveIndicator,
-              {
-                width: indicator2Width.interpolate({
-                  inputRange: [0.3, 1],
-                  outputRange: [12, 32],
-                }),
-                opacity: indicator2Opacity,
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.indicator,
-              currentSection === 3 ? styles.activeIndicator : styles.inactiveIndicator,
-              {
-                width: indicator3Width.interpolate({
-                  inputRange: [0.3, 1],
-                  outputRange: [12, 32],
-                }),
-                opacity: indicator3Opacity,
-              },
-            ]}
-          />
+          {carouselData.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.indicator,
+                currentIndex === index ? styles.activeIndicator : styles.inactiveIndicator,
+              ]}
+            />
+          ))}
         </View>
 
         {/* Navigation buttons */}
         <View style={styles.navigationContainer}>
-          {/* Back button - only show for sections 2 and 3 */}
-          {currentSection > 1 && (
+          {/* Back button - only show for slides 2 and 3 */}
+          {currentIndex > 0 && (
             <View style={styles.backButtonContainer}>
               <Pressable
                 style={({ pressed }) => [
@@ -220,8 +137,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* Next button - positioned right for section 1, right for sections 2-3 */}
-          <View style={currentSection === 1 ? styles.nextButtonContainerSingle : styles.nextButtonContainer}>
+          {/* Next button */}
+          <View style={currentIndex === 0 ? styles.nextButtonContainerSingle : styles.nextButtonContainer}>
             <Pressable
               style={({ pressed }) => [
                 styles.nextButton,
@@ -264,22 +181,26 @@ const styles = StyleSheet.create({
   skipButtonText: {
     color: '#000000',
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: Fonts.medium,
   },
-  contentArea: {
+  carouselContainer: {
+    flex: 1,
+  },
+  carouselItem: {
     flex: 1,
     paddingHorizontal: 32,
-    paddingTop: 40,
+   
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: Fonts.bold,
     color: '#000000',
     textAlign: 'center',
-    marginBottom: 10,
+    marginVertical: 10,
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: Fonts.regular,
     color: '#666666',
     textAlign: 'center',
     marginBottom: 40,
@@ -287,13 +208,11 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     alignItems: 'center',
-    marginBottom: 40,
   },
-  placeholderImage: {
+  carousalImage: {
     width: 280,
     height: 350,
     borderRadius: 16,
-    backgroundColor: '#F5F5F5',
   },
   bottomSection: {
     paddingHorizontal: 32,
@@ -345,7 +264,7 @@ const styles = StyleSheet.create({
   backButtonIcon: {
     color: '#808B95',
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: Fonts.bold,
   },
   nextButtonContainer: {
     alignItems: 'flex-end',
@@ -377,7 +296,18 @@ const styles = StyleSheet.create({
   nextButtonIcon: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: Fonts.bold,
+  },
+  swipeHint: {
+    alignItems: 'center',
+    marginTop: 20,
+    opacity: 0.6,
+  },
+  swipeHintText: {
+    fontSize: 14,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+    fontStyle: 'italic',
   },
 });
 
