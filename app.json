@@ -9,9 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "splash": false,
       "supportsTablet": true,
       "bundleIdentifier": "com.motherlandjames.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to take profile pictures.",
         "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select profile pictures."

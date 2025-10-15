@@ -32,7 +32,7 @@ export default function Header({
           </TouchableOpacity>
         )}
         
-        <View style={[styles.titleContainer]}>
+        <View style={styles.titleContainer}>
           <Text style={[styles.title, { color: colors.text }]}>
             {title}
           </Text>
@@ -64,7 +64,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
   },
-
   title: {
     fontSize: 32,
     fontFamily: Fonts.bold,

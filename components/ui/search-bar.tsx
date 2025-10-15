@@ -1,25 +1,45 @@
-import { Fonts } from '@/constants/theme';
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Fonts, Icons } from '@/constants/theme';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface SearchBarProps {
   onPress?: () => void;
   onFilterPress?: () => void;
+  onSearchChange?: (text: string) => void;
+  placeholder?: string;
+  value?: string;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ onPress, onFilterPress }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ 
+  onPress, 
+  onFilterPress, 
+  onSearchChange, 
+  placeholder = "Search here",
+  value 
+}) => {
+  const [searchText, setSearchText] = useState(value || '');
+
+  const handleTextChange = (text: string) => {
+    setSearchText(text);
+    onSearchChange?.(text);
+  };
+
   return (
     <View style={styles.container}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.searchContainer,
-          { opacity: pressed ? 0.9 : 1 }
-        ]}
-        onPress={onPress}
-      >
+      <View style={styles.searchContainer}>
         <View style={styles.leftContent}>
-          <Text style={styles.locationIcon}>📍</Text>
-          <Text style={styles.placeholder}>Search here</Text>
+          <Icons.Map width={29} height={29} />
+          <Icons.Search width={25} height={25} />
+          <TextInput
+            style={styles.textInput}
+            placeholder={placeholder}
+            placeholderTextColor="#222222"
+            value={searchText}
+            onChangeText={handleTextChange}
+            onFocus={onPress}
+            multiline={false}
+            returnKeyType="search"
+          />
         </View>
         
         <View style={styles.rightContent}>
@@ -31,10 +51,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ onPress, onFilterPress }) => {
             ]}
             onPress={onFilterPress}
           >
-            <Text style={styles.filterIcon}>⚙️</Text>
+            <Icons.Setting width={23} height={23} />
           </Pressable>
         </View>
-      </Pressable>
+      </View>
     </View>
   );
 };
@@ -65,15 +85,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    gap: 8,
   },
-  locationIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  placeholder: {
+  textInput: {
+    flex: 1,
     fontSize: 16,
     fontFamily: Fonts.regular,
-    color: '#999999',
+    color: '#000000',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    paddingRight:10,
   },
   rightContent: {
     flexDirection: 'row',
@@ -83,13 +104,10 @@ const styles = StyleSheet.create({
   dateRange: {
     fontSize: 14,
     fontFamily: Fonts.regular,
-    color: '#999999',
+    color: '#222222',
   },
   filterButton: {
     padding: 4,
-  },
-  filterIcon: {
-    fontSize: 16,
   },
 });
 

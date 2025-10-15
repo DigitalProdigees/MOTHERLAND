@@ -1,13 +1,17 @@
 import GradientButton from '@/components/ui/gradient-button';
-import Header from '@/components/ui/header';
 import { Fonts, Icons } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { ref, update } from 'firebase/database';
 import { useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface ClassType {
+  id: string;
+  name: string;
+}
 
 interface Country {
   name: string;
@@ -24,21 +28,36 @@ interface City {
   state: string;
 }
 
-export default function ProfileInfoScreen() {
+export default function InstructorProfileScreen() {
   const router = useRouter();
   const [fullName, setFullName] = useState('');
+  const [experience, setExperience] = useState('');
+  const [selectedClassType, setSelectedClassType] = useState<ClassType | null>(null);
+  const [description, setDescription] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
-  const [selectedState, setSelectedState] = useState<State | null>(null);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [selectedState, setSelectedState] = useState<State | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [userType, setUserType] = useState<string>('dancer');
   
   // Modal states
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [showStateModal, setShowStateModal] = useState(false);
   const [showCityModal, setShowCityModal] = useState(false);
+  const [showClassTypeModal, setShowClassTypeModal] = useState(false);
+
+  // Class types data (from categories-section.tsx)
+  const classTypes: ClassType[] = [
+    { id: 'hip-hop', name: 'Hip-Hop' },
+    { id: 'salsa', name: 'Salsa' },
+    { id: 'ballet', name: 'Ballet Dance' },
+    { id: 'modern', name: 'Modern Dance' },
+    { id: 'swing', name: 'Swing' },
+    { id: 'contemporary', name: 'Contemporary' },
+    { id: 'tap', name: 'Tap Dance' },
+    { id: 'jazz', name: 'Jazz Dance' },
+  ];
 
   // Sample data for modals
   const countries: Country[] = [
@@ -173,9 +192,26 @@ export default function ProfileInfoScreen() {
     setShowCityModal(false);
   };
 
+  const handleClassTypeSelect = (classType: ClassType) => {
+    setSelectedClassType(classType);
+    setShowClassTypeModal(false);
+  };
+
   const handleNext = async () => {
     if (!fullName.trim()) {
       Alert.alert('Error', 'Please enter your full name');
+      return;
+    }
+    if (!experience.trim()) {
+      Alert.alert('Error', 'Please enter your experience');
+      return;
+    }
+    if (!selectedClassType) {
+      Alert.alert('Error', 'Please select a type of class');
+      return;
+    }
+    if (!description.trim()) {
+      Alert.alert('Error', 'Please enter your description');
       return;
     }
 
@@ -192,6 +228,9 @@ export default function ProfileInfoScreen() {
       const userRef = ref(database, `users/${user.uid}/personalInfo`);
       await update(userRef, {
         fullName: fullName.trim(),
+        experience: experience.trim(),
+        classType: selectedClassType.name,
+        description: description.trim(),
         country: selectedCountry?.name || '',
         state: selectedState?.name || '',
         city: selectedCity?.name || '',
@@ -200,19 +239,19 @@ export default function ProfileInfoScreen() {
         profileCompletedAt: new Date().toISOString(),
       });
 
-      console.log('Profile updated successfully');
+      console.log('Instructor profile updated successfully');
       
       // Show success modal
       setShowSuccessModal(true);
       
-      // Auto navigate to home after 2 seconds
+      // Auto navigate to instructor home after 2 seconds
       setTimeout(() => {
         setShowSuccessModal(false);
-        router.replace('/(home)/home');
+        router.replace('/(instructor)/home');
       }, 2000);
       
     } catch (error: any) {
-      console.error('Error updating profile:', error);
+      console.error('Error updating instructor profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -260,10 +299,22 @@ export default function ProfileInfoScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
-        title="Profile Informations"
-        onBackPress={() => router.back()}
-      />
+      {/* Custom Header */}
+      <View style={styles.customHeader}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Icons.Back width={24} height={24} />
+        </TouchableOpacity>
+        
+        <View style={styles.titleContainer}>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
+        
+        <View style={styles.rightSpacer} />
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Image Section */}
@@ -294,11 +345,64 @@ export default function ProfileInfoScreen() {
               </View>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your full name"
+                placeholder="ex, jhon doe"
                 placeholderTextColor="#999"
                 value={fullName}
                 onChangeText={setFullName}
                 autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          {/* Experience */}
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.inputLabel}>Experience</Text>
+            <View style={styles.inputField}>
+              <View style={styles.inputIcon}>
+                <Icons.Name width={24} height={24} />
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="3 years"
+                placeholderTextColor="#999"
+                value={experience}
+                onChangeText={setExperience}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          {/* Type of Class */}
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.inputLabel}>Type of Class</Text>
+            <Pressable style={styles.inputField} onPress={() => setShowClassTypeModal(true)}>
+              <View style={styles.inputIcon}>
+                <Icons.Name width={24} height={24} />
+              </View>
+              <Text style={[styles.input, selectedClassType ? styles.selectedText : styles.placeholderText]}>
+                {selectedClassType ? selectedClassType.name : 'Hip-Hop'}
+              </Text>
+              <View style={styles.dropdownIcon}>
+                <Text style={styles.dropdownIconText}>▼</Text>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Description */}
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.inputLabel}>Description</Text>
+            <View style={styles.inputField}>
+              <View style={styles.inputIcon}>
+                <Icons.Name width={24} height={24} />
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="I'm Annie Bens, your dedicated conci..."
+                placeholderTextColor="#999"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={2}
               />
             </View>
           </View>
@@ -319,10 +423,7 @@ export default function ProfileInfoScreen() {
           {/* City */}
           <View style={styles.fieldWrapper}>
             <Text style={styles.inputLabel}>City</Text>
-            <Pressable 
-              style={[styles.inputField, !selectedCountry && styles.disabledField]} 
-              onPress={() => selectedCountry && setShowCityModal(true)}
-            >
+            <Pressable style={styles.inputField} onPress={() => setShowCityModal(true)}>
               <View style={styles.inputIcon}>
                 <Icons.City width={24} height={24} />
               </View>
@@ -335,10 +436,7 @@ export default function ProfileInfoScreen() {
           {/* State */}
           <View style={styles.fieldWrapper}>
             <Text style={styles.inputLabel}>State</Text>
-            <Pressable 
-              style={[styles.inputField, !selectedCountry && styles.disabledField]} 
-              onPress={() => selectedCountry && setShowStateModal(true)}
-            >
+            <Pressable style={styles.inputField} onPress={() => setShowStateModal(true)}>
               <View style={styles.inputIcon}>
                 <Icons.State width={24} height={24} />
               </View>
@@ -350,16 +448,25 @@ export default function ProfileInfoScreen() {
         </View>
       </ScrollView>
 
-      {/* Next Button */}
+      {/* Save Button */}
       <View style={styles.buttonContainer}>
         <GradientButton
-          title={isLoading ? "Saving..." : "Next"}
+          title={isLoading ? "Saving..." : "Save"}
           onPress={handleNext}
           disabled={isLoading}
         />
       </View>
 
       {/* Modals */}
+      {renderModal(
+        showClassTypeModal,
+        () => setShowClassTypeModal(false),
+        'Select Type of Class',
+        classTypes,
+        handleClassTypeSelect,
+        (classType) => classType.name
+      )}
+
       {renderModal(
         showCountryModal,
         () => setShowCountryModal(false),
@@ -399,8 +506,10 @@ export default function ProfileInfoScreen() {
             <View style={styles.successIconContainer}>
               <Icons.Success width={120} height={120} />
             </View>
-            <Text style={styles.successTitle}>Your Profile is</Text>
-            <Text style={styles.successSubtitle}>Saved!</Text>
+         
+            <Text style={styles.successMessage}>Your profile is </Text>
+            <Text style={styles.successMessage}>Saved</Text>
+
           </View>
         </View>
       </Modal>
@@ -412,6 +521,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    padding: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontFamily: Fonts.bold,
+    fontWeight: 'bold',
+    lineHeight: 38,
+    textAlign: 'center',
+    color: '#000000',
+  },
+  rightSpacer: {
+    width: 40,
   },
   content: {
     flex: 1,
@@ -466,8 +605,8 @@ const styles = StyleSheet.create({
   inputField: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+    backgroundColor: '#8A53C210',
+    borderRadius: 100,
     height: 56,
     paddingHorizontal: 16,
     shadowColor: '#000',
@@ -477,10 +616,14 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
-  disabledField: {
-    opacity: 0.5,
+  dropdownIcon: {
+    marginLeft: 8,
+  },
+  dropdownIconText: {
+    fontSize: 12,
+    color: '#666666',
   },
   inputIcon: {
     width: 24,
@@ -503,7 +646,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingHorizontal: 32,
-    paddingBottom: 32,
+    paddingVertical:9,
   },
   modalOverlay: {
     flex: 1,
@@ -566,8 +709,8 @@ const styles = StyleSheet.create({
   successModalContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    paddingHorizontal:70,
-    paddingVertical:40,
+    paddingHorizontal: 70,
+    paddingVertical: 40,
     alignItems: 'center',
     margin: 20,
     shadowColor: '#000',
@@ -583,16 +726,23 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   successTitle: {
-    fontSize: 25,
+    fontSize: 24,
     fontFamily: Fonts.bold,
     color: '#000000',
     textAlign: 'center',
     marginBottom: 4,
   },
   successSubtitle: {
-    fontSize: 25,
+    fontSize: 24,
     fontFamily: Fonts.bold,
-    color: '#000000',
+    color: '#8A53C2',
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  successMessage: {
+    fontSize: 22,
+fontWeight:'bold',    color: '#666666',
+    textAlign: 'center',
+
   },
 });

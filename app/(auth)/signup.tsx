@@ -20,6 +20,7 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('88888888');
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [agreePrivacy, setAgreePrivacy] = useState(true);
+  const [isInstructor, setIsInstructor] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({
@@ -172,11 +173,12 @@ export default function SignUpScreen() {
         email: currentEmail.toLowerCase().trim(),
         createdAt: new Date().toISOString(),
         uid: user.uid,
+        userType: isInstructor ? 'instructor' : 'dancer',
       });
 
       console.log('Account created successfully:', { uid: user.uid, email: user.email });
       
-      // Navigate to terms screen first
+      // Navigate to terms screen first (for both user types)
       router.push('/(auth)/terms');
       
     } catch (error: any) {
@@ -523,6 +525,71 @@ export default function SignUpScreen() {
             />
           </View>
           {errors.confirmPassword ? <Text style={section2Styles.errorText}>{errors.confirmPassword}</Text> : null}
+        </View>
+
+        {/* Instructor/Dancer Toggle */}
+        <View style={section2Styles.fieldWrapper}>
+          <Text style={section2Styles.inputLabel}>I am signing up as:</Text>
+          <View style={section2Styles.userTypeContainer}>
+              {!isInstructor ? (
+                <LinearGradient
+                  colors={['#F708F7', '#C708F7', '#F76B0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[section2Styles.userTypeButton, section2Styles.userTypeButtonActive]}
+                >
+                  <Pressable
+                    style={section2Styles.userTypeButton}
+                    onPress={() => setIsInstructor(false)}
+                  >
+                    <Text style={[
+                      section2Styles.userTypeText,
+                      section2Styles.userTypeTextActive
+                    ]}>
+                      Dancer
+                    </Text>
+                  </Pressable>
+                </LinearGradient>
+              ) : (
+                <Pressable
+                  style={section2Styles.userTypeButton}
+                  onPress={() => setIsInstructor(false)}
+                >
+                  <Text style={section2Styles.userTypeText}>
+                    Dancer
+                  </Text>
+                </Pressable>
+              )}
+              {isInstructor ? (
+                <LinearGradient
+                  colors={['#F708F7', '#C708F7', '#F76B0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[section2Styles.userTypeButton, section2Styles.userTypeButtonActive]}
+                >
+                  <Pressable
+                    style={section2Styles.userTypeButton}
+                    onPress={() => setIsInstructor(true)}
+                  >
+                    <Text style={[
+                      section2Styles.userTypeText,
+                      section2Styles.userTypeTextActive
+                    ]}>
+                      Instructor
+                    </Text>
+                  </Pressable>
+                </LinearGradient>
+              ) : (
+                <Pressable
+                  style={section2Styles.userTypeButton}
+                  onPress={() => setIsInstructor(true)}
+                >
+                  <Text style={section2Styles.userTypeText}>
+                    Instructor
+                  </Text>
+                </Pressable>
+              )}
+          </View>
         </View>
       </View>
 
@@ -889,6 +956,38 @@ const section2Styles = StyleSheet.create({
   },
   boldText: {
     fontFamily: Fonts.bold,
+  },
+  userTypeContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 100,
+    marginTop: 8,
+  },
+  userTypeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 19,
+    borderRadius: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userTypeButtonActive: {
+    shadowColor: '#F708F7',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  userTypeText: {
+    fontSize: 16,
+    fontFamily: Fonts.semiBold,
+    color: '#666666',
+  },
+  userTypeTextActive: {
+    color: '#FFFFFF',
   },
 });
 

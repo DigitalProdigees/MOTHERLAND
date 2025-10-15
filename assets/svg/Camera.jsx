@@ -1,0 +1,33 @@
+import * as React from "react";
+import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
+const SVGComponent = (props) => (
+  <Svg
+    width={28}
+    height={24}
+    viewBox="0 0 28 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <Path
+      d="M28 6C28 4.60714 26.7969 3.42857 25.375 3.42857H20.5625L19.8516 1.71429C19.4688 0.696429 18.4844 0 17.3906 0H10.5547C9.46094 0 8.47656 0.696429 8.09375 1.71429L7.4375 3.42857H2.625C1.14844 3.42857 0 4.60714 0 6V21.4286C0 22.875 1.14844 24 2.625 24H25.375C26.7969 24 28 22.875 28 21.4286V6ZM20.5625 13.7143C20.5625 17.3036 17.6094 20.1429 14 20.1429C10.3359 20.1429 7.4375 17.3036 7.4375 13.7143C7.4375 10.1786 10.3359 7.28571 14 7.28571C17.6094 7.28571 20.5625 10.1786 20.5625 13.7143ZM18.8125 13.7143C18.8125 11.1429 16.625 9 14 9C11.3203 9 9.1875 11.1429 9.1875 13.7143C9.1875 16.3393 11.3203 18.4286 14 18.4286C16.625 18.4286 18.8125 16.3393 18.8125 13.7143Z"
+      fill="url(#paint0_linear_8673_7605)"
+    />
+    <Defs>
+      <LinearGradient
+        id="paint0_linear_8673_7605"
+        x1={-3.57}
+        y1={-2.28}
+        x2={26.3106}
+        y2={33.0639}
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop stopColor="#F708F7" />
+        <Stop offset={0.483045} stopColor="#C708F7" />
+        <Stop offset={1} stopColor="#F76B0B" />
+      </LinearGradient>
+    </Defs>
+  </Svg>
+);
+export default SVGComponent;
+

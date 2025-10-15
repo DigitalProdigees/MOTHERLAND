@@ -1,4 +1,4 @@
-import { Fonts } from '@/constants/theme';
+import { Fonts, Icons } from '@/constants/theme';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -12,15 +12,15 @@ const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   onCategoryPress,
 }) => {
   const categories = [
-    { id: 'all', label: 'All Classes', icon: '✓👋' },
-    { id: 'hip-hop', label: 'Hip-Hop', icon: '💃' },
-    { id: 'contemporary', label: 'Contemporary', icon: '🕺' },
-    { id: 'salsa', label: 'Salsa', icon: '💃🕺' },
-    { id: 'ballet', label: 'Ballet Dance', icon: '🩰' },
-    { id: 'modern', label: 'Modern Dance', icon: '💃' },
-    { id: 'swing', label: 'Swing', icon: '💃🕺' },
-    { id: 'tap', label: 'Tap Dance', icon: '👞' },
-    { id: 'jazz', label: 'Jazz Dance', icon: '💃' },
+    { id: 'all', label: 'All Classes', icon: 'vector', isVector: true },
+    { id: 'hip-hop', label: 'Hip-Hop', icon: 'hiphop', isVector: true },
+    { id: 'salsa', label: 'Salsa', icon: 'salsa', isVector: true },
+    { id: 'ballet', label: 'Ballet Dance', icon: 'ballet', isVector: true },
+    { id: 'modern', label: 'Modern Dance', icon: 'modern', isVector: true },
+    { id: 'swing', label: 'Swing', icon: 'swing', isVector: true },
+    { id: 'contemporary', label: 'Contemporary', icon: 'contemporary', isVector: true },
+    { id: 'tap', label: 'Tap Dance', icon: 'tap', isVector: true },
+    { id: 'jazz', label: 'Jazz Dance', icon: 'jazz', isVector: true },
   ];
 
   return (
@@ -48,8 +48,24 @@ const CategoriesSection: React.FC<CategoriesSectionProps> = ({
             ]}
             onPress={() => onCategoryPress?.(category.id)}
           >
-            <Text style={styles.categoryIcon}>{category.icon}</Text>
-            <Text style={styles.categoryLabel}>{category.label}</Text>
+            <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+              {category.isVector ? (
+                <>
+                  {category.icon === 'vector' && <Icons.Vector width={35} height={35} marginLeft={4} />}
+                  {category.icon === 'hiphop' && <Icons.HipHop width={35} height={35} marginLeft={4}/>}
+                  {category.icon === 'salsa' && <Icons.Salsa width={35} height={35} marginLeft={4}/>}
+                      {category.icon === 'ballet' && <Icons.Ballet width={40} height={40} marginLeft={4}/>}
+                  {category.icon === 'modern' && <Icons.Modern width={35} height={35} marginLeft={4}/>}
+                  {category.icon === 'swing' && <Icons.Swing width={40} height={40} marginLeft={4}/>}
+                  {category.icon === 'contemporary' && <Icons.Contemporary width={35} height={35} marginLeft={4}/>}
+                  {category.icon === 'tap' && <Icons.Tap width={35} height={35} marginLeft={4}/>}
+                  {category.icon === 'jazz' && <Icons.Jazz width={35} height={35} marginLeft={4}/>}
+                </>
+              ) : (
+                <Text style={styles.categoryIcon}>{category.icon}</Text>
+              )}
+              <Text style={styles.categoryLabel}>{category.label}</Text>
+            </View>
           </Pressable>
         ))}
       </View>
@@ -84,26 +100,25 @@ const styles = StyleSheet.create({
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap:8,
+  
   },
   categoryButton: {
-    width: '30%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 80,
   },
   categoryIcon: {
     fontSize: 24,
     marginBottom: 8,
   },
   categoryLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: Fonts.medium,
-    color: '#8B5CF6',
+    color: '#222222',
     textAlign: 'center',
     lineHeight: 16,
   },

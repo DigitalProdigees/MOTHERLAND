@@ -1,15 +1,52 @@
 import GradientButton from '@/components/ui/gradient-button';
 import Header from '@/components/ui/header';
 import { Fonts } from '@/constants/theme';
+import { auth, database } from '@/firebase.config';
 import { useRouter } from 'expo-router';
+import { get, ref } from 'firebase/database';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAccept = () => {
-    router.replace('/(auth)/success');
+  const handleAccept = async () => {
+    setIsLoading(true);
+    
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        console.error('No authenticated user found');
+        return;
+      }
+
+      // Get user type from Firebase
+      const userRef = ref(database, `users/${user.uid}/personalInfo`);
+      const snapshot = await get(userRef);
+      
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        const userType = userData.userType || 'dancer';
+        
+        // Route based on user type
+        if (userType === 'instructor') {
+          router.replace('/(onboarding)/instructor-profile');
+        } else {
+          router.replace('/(onboarding)/profile-info');
+        }
+      } else {
+        // Default to dancer profile if no user data found
+        router.replace('/(onboarding)/profile-info');
+      }
+    } catch (error) {
+      console.error('Error checking user type:', error);
+      // Default to dancer profile on error
+      router.replace('/(onboarding)/profile-info');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -77,8 +114,9 @@ export default function PrivacyPolicyScreen() {
 
       <View style={styles.buttonContainer}>
         <GradientButton
-          title="Accept & Continue"
+          title={isLoading ? "Loading..." : "Accept & Continue"}
           onPress={handleAccept}
+          disabled={isLoading}
         />
       </View>
     </SafeAreaView>

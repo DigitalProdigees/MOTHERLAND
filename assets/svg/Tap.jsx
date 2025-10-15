@@ -1,0 +1,71 @@
+import * as React from "react";
+import Svg, { ClipPath, Defs, G, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+
+const Tap = (props) => (
+  <Svg
+    width={32}
+    height={32}
+    viewBox="0 0 32 32"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <G clipPath="url(#clip0_8673_10775)">
+      <Path
+        d="M16.952 30.125H10.0103V32H18.5578C17.9272 31.4634 17.3853 30.8306 16.952 30.125ZM19.3649 17.217L21.1034 21.2113C21.6011 22.3547 22.8474 22.9936 24.0661 22.7304L25.5289 22.4346C24.8578 20.8654 25.0251 19.2858 25.5591 17.217H19.3649ZM18.5488 15.342H26.0867C26.1412 15.1572 26.1968 14.9695 26.2539 14.7769C27.1993 11.5881 28.4942 7.22069 28.8878 0.996687L28.9508 0H17.9368L18.04 1.03094C18.3278 3.90506 18.0941 5.96138 17.3452 7.14281C16.8976 7.849 16.2979 8.215 15.5742 8.50819L18.5488 15.342Z"
+        fill="url(#paint0_linear_8673_10775)"
+      />
+      <Path
+        d="M29.0338 26.6305L26.7181 24.1069L24.4551 24.5644C24.147 24.6305 23.8327 24.6639 23.5175 24.6639C21.7573 24.6641 20.1085 23.6235 19.3841 21.9594L13.8023 9.13574C12.8467 9.58062 11.4154 10.448 10.3614 11.9703C9.12682 13.7534 8.81676 15.7934 8.76782 16.2626L13.9123 19.1406L18.2118 28.513C19.1376 30.5311 21.1149 31.8702 23.3141 31.9999H30.2972V29.8762C30.2972 28.671 29.8485 27.5183 29.0338 26.6305Z"
+        fill="url(#paint1_linear_8673_10775)"
+      />
+      <Path
+        d="M8.24419 18.1182L7.019 22.4585L10.1425 24.3292L12.3364 20.4075L8.24419 18.1182ZM1.71338 23.446L4.75632 22.3714L5.38069 24.1395L2.33775 25.2141L1.71338 23.446ZM5.113 28.391L6.68125 25.5707L8.31994 26.482L6.75169 29.3022L5.113 28.391Z"
+        fill="url(#paint2_linear_8673_10775)"
+      />
+    </G>
+    <Defs>
+      <LinearGradient
+        id="paint0_linear_8673_10775"
+        x1={7.59533}
+        y1={-3.04}
+        x2={43.2485}
+        y2={18.3554}
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop stopColor="#F708F7" />
+        <Stop offset={0.483045} stopColor="#C708F7" />
+        <Stop offset={1} stopColor="#F76B0B" />
+      </LinearGradient>
+      <LinearGradient
+        id="paint1_linear_8673_10775"
+        x1={6.02283}
+        y1={6.96364}
+        x2={34.8606}
+        y2={34.4942}
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop stopColor="#F708F7" />
+        <Stop offset={0.483045} stopColor="#C708F7" />
+        <Stop offset={1} stopColor="#F76B0B" />
+      </LinearGradient>
+      <LinearGradient
+        id="paint2_linear_8673_10775"
+        x1={0.358947}
+        y1={17.0557}
+        x2={14.4701}
+        y2={30.6447}
+        gradientUnits="userSpaceOnUse"
+      >
+        <Stop stopColor="#F708F7" />
+        <Stop offset={0.483045} stopColor="#C708F7" />
+        <Stop offset={1} stopColor="#F76B0B" />
+      </LinearGradient>
+      <ClipPath id="clip0_8673_10775">
+        <Rect width={32} height={32} fill="white" />
+      </ClipPath>
+    </Defs>
+  </Svg>
+);
+
+export default Tap;

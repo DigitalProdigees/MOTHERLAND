@@ -1,5 +1,6 @@
+import { Icons } from '@/constants/theme';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 interface AppHeaderProps {
   onMenuPress?: () => void;
@@ -23,7 +24,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         ]}
         onPress={onMenuPress}
       >
-        <Text style={styles.icon}>☰</Text>
+        <Icons.Drawer 
+          width={30} 
+          height={30} 
+        />
       </Pressable>
 
       <View style={styles.rightIcons}>
@@ -34,7 +38,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           ]}
           onPress={onAddPress}
         >
-          <Text style={styles.icon}>+</Text>
+          <Icons.PlusAdd 
+            width={50} 
+            height={50} 
+          />
         </Pressable>
 
         <Pressable
@@ -44,7 +51,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           ]}
           onPress={onSearchPress}
         >
-          <Text style={styles.icon}>🔍</Text>
+      <Icons.ProfileIcon 
+            width={50} 
+            height={50} 
+          />
         </Pressable>
 
         <Pressable
@@ -54,7 +64,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           ]}
           onPress={onNotificationPress}
         >
-          <Text style={styles.icon}>🔔</Text>
+          <Icons.Notification 
+            width={50} 
+            height={50} 
+          />
         </Pressable>
       </View>
     </View>
@@ -66,17 +79,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom:20,
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 50, // Account for status bar
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+   
   },
   rightIcons: {
     flexDirection: 'row',

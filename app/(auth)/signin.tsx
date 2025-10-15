@@ -2,10 +2,11 @@ import GradientButton from '@/components/ui/gradient-button';
 import Header from '@/components/ui/header';
 import LoadingModal from '@/components/ui/loading-modal';
 import { Fonts, Icons } from '@/constants/theme';
-import { auth } from '@/firebase.config';
+import { auth, database } from '@/firebase.config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { get, ref } from 'firebase/database';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -165,8 +166,21 @@ export default function SignInScreen() {
 
       console.log('Sign in successful:', { uid: user.uid, email: user.email });
       
-      // Navigate to home screen
-      router.replace('/(home)/home');
+      // Check user type and navigate accordingly
+      try {
+        const userRef = ref(database, `users/${user.uid}/personalInfo/userType`);
+        const snapshot = await get(userRef);
+        const userType = snapshot.val();
+        
+        if (userType === 'instructor') {
+          router.replace('/(instructor)/home');
+        } else {
+          router.replace('/(home)/home');
+        }
+      } catch (userTypeError) {
+        // If user type fetch fails, go back to auth
+        router.replace('/(auth)/signin');
+      }
       
     } catch (error: any) {
       
