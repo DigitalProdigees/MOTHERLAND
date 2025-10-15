@@ -30,7 +30,6 @@ interface City {
 
 export default function InstructorProfileScreen() {
   const router = useRouter();
-  const [fullName, setFullName] = useState('');
   const [experience, setExperience] = useState('');
   const [selectedClassType, setSelectedClassType] = useState<ClassType | null>(null);
   const [description, setDescription] = useState('');
@@ -115,7 +114,7 @@ export default function InstructorProfileScreen() {
         ]
       );
     } catch (error) {
-      console.error('Error requesting image picker:', error);
+      console.log('Error requesting image picker:', error);
       Alert.alert('Error', 'Failed to access image picker');
     }
   };
@@ -141,7 +140,7 @@ export default function InstructorProfileScreen() {
         setProfileImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image from camera:', error);
+      console.log('Error picking image from camera:', error);
       Alert.alert('Error', 'Failed to take photo');
     }
   };
@@ -167,7 +166,7 @@ export default function InstructorProfileScreen() {
         setProfileImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image from library:', error);
+      console.log('Error picking image from library:', error);
       Alert.alert('Error', 'Failed to select image');
     }
   };
@@ -198,10 +197,6 @@ export default function InstructorProfileScreen() {
   };
 
   const handleNext = async () => {
-    if (!fullName.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
-      return;
-    }
     if (!experience.trim()) {
       Alert.alert('Error', 'Please enter your experience');
       return;
@@ -227,7 +222,6 @@ export default function InstructorProfileScreen() {
       // Update user profile in Firebase Realtime Database
       const userRef = ref(database, `users/${user.uid}/personalInfo`);
       await update(userRef, {
-        fullName: fullName.trim(),
         experience: experience.trim(),
         classType: selectedClassType.name,
         description: description.trim(),
@@ -251,7 +245,7 @@ export default function InstructorProfileScreen() {
       }, 2000);
       
     } catch (error: any) {
-      console.error('Error updating instructor profile:', error);
+      console.log('Error updating instructor profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -336,23 +330,7 @@ export default function InstructorProfileScreen() {
 
         {/* Form Fields */}
         <View style={styles.formContainer}>
-          {/* Full Name */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <View style={styles.inputField}>
-              <View style={styles.inputIcon}>
-                <Icons.Name width={24} height={24} />
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="ex, jhon doe"
-                placeholderTextColor="#999"
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
+       
 
           {/* Experience */}
           <View style={styles.fieldWrapper}>

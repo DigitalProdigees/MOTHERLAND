@@ -3,6 +3,7 @@ import Header from '@/components/ui/header';
 import LoadingModal from '@/components/ui/loading-modal';
 import { Fonts, Icons } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
+import { AuthService } from '@/services/authService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -127,20 +128,120 @@ export default function SignInScreen() {
     setTimeout(() => setCurrentSection(2), 50);
   };
 
-  const handleGoogleSignIn = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Google Sign In will be available soon!',
-      [{ text: 'OK' }]
-    );
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const result = await AuthService.signInWithGoogle();
+      
+      if (result.success && result.user) {
+        console.log('Google Sign-In successful:', { uid: result.user.uid, email: result.user.email });
+        
+        // Check if user exists in our database (same logic as Apple Sign-In)
+        try {
+          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
+          console.log('🔍 Google Sign-In - User exists in database:', userExists);
+          
+          if (userExists) {
+            // User exists in database, update their data and navigate to home
+            console.log('🔍 Google Sign-In - Existing user detected, updating data and getting user type');
+            
+            // Update user data for existing users
+            await AuthService.saveUserToDatabase(result.user, {
+              fullName: 'Google User', // Will be updated with actual name if available
+              email: result.user.email || '',
+              profilePicture: '',
+            });
+            
+            const userType = await AuthService.getUserType(result.user.uid);
+            console.log('🔍 Google Sign-In - User type:', userType);
+            
+            if (userType === 'instructor') {
+              router.replace('/(instructor)/home');
+            } else {
+              router.replace('/(home)/home');
+            }
+          } else {
+            // User doesn't exist in database, treat as new user
+            console.log('🔍 Google Sign-In - New user detected (no database record), navigating to profile completion');
+            router.push('/(auth)/google-profile-completion');
+          }
+        } catch (error) {
+          console.log('🔍 Google Sign-In - Error checking user existence, treating as new user:', error);
+          // If check fails, treat as new user
+          router.push('/(auth)/google-profile-completion');
+        }
+      } else {
+        // Don't show alert for user cancellation
+        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
+          console.log('Google Sign-In cancelled by user');
+        } else {
+          Alert.alert('Sign In Failed', result.error || 'Google Sign-In failed');
+        }
+      }
+    } catch (error: any) {
+      console.log('Google Sign-In error:', error);
+      Alert.alert('Sign In Failed', error.message || 'Google Sign-In failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAppleSignIn = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Apple Sign In will be available soon!',
-      [{ text: 'OK' }]
-    );
+  const handleAppleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const result = await AuthService.signInWithApple();
+      
+      if (result.success && result.user) {
+        console.log('Apple Sign-In successful:', { uid: result.user.uid, email: result.user.email });
+        
+        // Check if user exists in our database (same logic as Apple Sign-Up)
+        try {
+          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
+          console.log('🍎 Apple Sign-In - User exists in database:', userExists);
+          
+          if (userExists) {
+            // User exists in database, update their data and navigate to home
+            console.log('🍎 Apple Sign-In - Existing user detected, updating data and getting user type');
+            
+            // Update user data for existing users
+            await AuthService.saveUserToDatabase(result.user, {
+              fullName: 'Apple User', // Will be updated with actual name if available
+              email: result.user.email || '',
+              profilePicture: '',
+            });
+            
+            const userType = await AuthService.getUserType(result.user.uid);
+            console.log('🍎 Apple Sign-In - User type:', userType);
+            
+            if (userType === 'instructor') {
+              router.replace('/(instructor)/home');
+            } else {
+              router.replace('/(home)/home');
+            }
+          } else {
+            // User doesn't exist in database, treat as new user
+            console.log('🍎 Apple Sign-In - New user detected (no database record), navigating to profile completion');
+            router.push('/(auth)/apple-profile-completion');
+          }
+        } catch (error) {
+          console.log('🍎 Apple Sign-In - Error checking user existence, treating as new user:', error);
+          // If check fails, treat as new user
+          router.push('/(auth)/apple-profile-completion');
+        }
+      } else {
+        // Don't show alert for user cancellation
+        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
+          console.log('Apple Sign-In cancelled by user');
+        } else {
+          Alert.alert('Sign In Failed', result.error || 'Apple Sign-In failed');
+        }
+      }
+    } catch (error: any) {
+      console.log('Apple Sign-In error:', error);
+      Alert.alert('Sign In Failed', error.message || 'Apple Sign-In failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -322,7 +423,8 @@ export default function SignInScreen() {
           </View>
         </Pressable>
 
-        {/* Apple option */}
+        {/* Apple option - Only show on iOS */}
+        {Platform.OS === 'ios' && (
         <Pressable
           style={({ pressed }) => [
             section1Styles.optionButton,
@@ -337,6 +439,7 @@ export default function SignInScreen() {
             <Text style={section1Styles.optionText}>Apple ID</Text>
           </View>
         </Pressable>
+        )}
       </View>
     </>
   );

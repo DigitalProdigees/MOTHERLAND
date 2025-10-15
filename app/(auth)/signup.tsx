@@ -3,6 +3,7 @@ import Header from '@/components/ui/header';
 import LoadingModal from '@/components/ui/loading-modal';
 import { Fonts, Icons } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
+import { AuthService } from '@/services/authService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -125,20 +126,117 @@ export default function SignUpScreen() {
     setTimeout(() => setCurrentSection(2), 50);
   };
 
-  const handleGoogleSignUp = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Google Sign Up will be available soon!',
-      [{ text: 'OK' }]
-    );
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      const result = await AuthService.signInWithGoogle();
+      
+      if (result.success && result.user) {
+        console.log('Google Sign-Up successful:', { uid: result.user.uid, email: result.user.email });
+        
+        // For Google Sign-Up, check if user exists in our database
+        // We'll use a comprehensive check to see if user has any data in database
+        try {
+          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
+          console.log('🔍 Google Sign-Up - User exists in database:', userExists);
+          
+          if (userExists) {
+            // User exists in database, get their type and navigate to home
+            console.log('🔍 Google Sign-Up - Existing user detected, getting user type');
+            const userType = await AuthService.getUserType(result.user.uid);
+            console.log('🔍 Google Sign-Up - User type:', userType);
+            
+            if (userType === 'instructor') {
+              router.replace('/(instructor)/home');
+            } else {
+              router.replace('/(home)/home');
+            }
+          } else {
+            // User doesn't exist in database, treat as new user
+            console.log('🔍 Google Sign-Up - New user detected (no database record), navigating to profile completion');
+            router.push('/(auth)/google-profile-completion');
+          }
+        } catch (error) {
+          console.log('🔍 Google Sign-Up - Error checking user existence, treating as new user:', error);
+          // If check fails, treat as new user
+          router.push('/(auth)/google-profile-completion');
+        }
+      } else {
+        // Don't show alert for user cancellation
+        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
+          console.log('Google Sign-Up cancelled by user');
+        } else {
+          Alert.alert('Sign Up Failed', result.error || 'Google Sign-Up failed');
+        }
+      }
+    } catch (error: any) {
+      console.log('Google Sign-Up error:', error);
+      Alert.alert('Sign Up Failed', error.message || 'Google Sign-Up failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAppleSignUp = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Apple Sign Up will be available soon!',
-      [{ text: 'OK' }]
-    );
+  const handleAppleSignUp = async () => {
+    console.log('🍎 Apple Sign-Up started');
+    setIsLoading(true);
+    try {
+      const result = await AuthService.signInWithApple();
+      
+      console.log('🍎 Apple Sign-Up result:', {
+        success: result.success,
+        isNewUser: result.isNewUser,
+        hasUser: !!result.user,
+        userUid: result.user?.uid,
+        userEmail: result.user?.email
+      });
+      
+      if (result.success && result.user) {
+        console.log('🍎 Apple Sign-Up successful:', { uid: result.user.uid, email: result.user.email });
+        
+        // For Apple Sign-Up, check if user exists in our database
+        // We'll use a comprehensive check to see if user has any data in database
+        try {
+          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
+          console.log('🍎 User exists in database:', userExists);
+          
+          if (userExists) {
+            // User exists in database, get their type and navigate to home
+            console.log('🍎 Existing Apple user detected, getting user type');
+            const userType = await AuthService.getUserType(result.user.uid);
+            console.log('🍎 User type from database:', userType);
+            
+            if (userType === 'instructor') {
+              console.log('🍎 Navigating to instructor home');
+              router.replace('/(instructor)/home');
+            } else {
+              console.log('🍎 Navigating to dancer home');
+              router.replace('/(home)/home');
+            }
+          } else {
+            // User doesn't exist in database, treat as new user
+            console.log('🍎 New Apple user detected (no database record), navigating to profile completion');
+            router.push('/(auth)/apple-profile-completion');
+          }
+        } catch (error) {
+          console.log('🍎 Error checking user existence, treating as new user:', error);
+          // If check fails, treat as new user
+          router.push('/(auth)/apple-profile-completion');
+        }
+      } else {
+        // Don't show alert for user cancellation
+        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
+          console.log('Apple Sign-Up cancelled by user');
+        } else {
+          Alert.alert('Sign Up Failed', result.error || 'Apple Sign-Up failed');
+        }
+      }
+    } catch (error: any) {
+      console.log('Apple Sign-Up error:', error);
+      Alert.alert('Sign Up Failed', error.message || 'Apple Sign-Up failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -166,15 +264,16 @@ export default function SignUpScreen() {
       const userCredential = await createUserWithEmailAndPassword(auth, currentEmail, currentPassword);
       const user = userCredential.user;
 
-      // Save user details to Realtime Database under users/{id}/personalInfo
-      const userRef = ref(database, `users/${user.uid}/personalInfo`);
-      await set(userRef, {
+      // Save user details to Realtime Database using AuthService
+      await AuthService.saveUserToDatabase(user, {
         fullName: currentFullName.trim(),
         email: currentEmail.toLowerCase().trim(),
-        createdAt: new Date().toISOString(),
-        uid: user.uid,
-        userType: isInstructor ? 'instructor' : 'dancer',
+        profilePicture: '',
       });
+      
+      // Update user type separately since it's specific to email signup
+      const userRef = ref(database, `users/${user.uid}/personalInfo/userType`);
+      await set(userRef, isInstructor ? 'instructor' : 'dancer');
 
       console.log('Account created successfully:', { uid: user.uid, email: user.email });
       
@@ -381,7 +480,8 @@ export default function SignUpScreen() {
           </View>
         </Pressable>
 
-        {/* Apple option */}
+        {/* Apple option - Only show on iOS */}
+        {Platform.OS === 'ios' && (
         <Pressable
           style={({ pressed }) => [
             section1Styles.optionButton,
@@ -396,6 +496,7 @@ export default function SignUpScreen() {
             <Text style={section1Styles.optionText}>Apple ID</Text>
           </View>
         </Pressable>
+        )}
       </View>
     </>
   );

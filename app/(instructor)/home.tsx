@@ -61,7 +61,7 @@ export default function InstructorHomeScreen() {
               await auth.signOut();
               router.replace('/(auth)/signin');
             } catch (error) {
-              console.error('Error signing out:', error);
+              console.log('Error signing out:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           },

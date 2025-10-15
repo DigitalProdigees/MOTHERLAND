@@ -18,7 +18,7 @@ export default function PrivacyPolicyScreen() {
     try {
       const user = auth.currentUser;
       if (!user) {
-        console.error('No authenticated user found');
+        console.log('No authenticated user found');
         return;
       }
 
@@ -41,7 +41,7 @@ export default function PrivacyPolicyScreen() {
         router.replace('/(onboarding)/profile-info');
       }
     } catch (error) {
-      console.error('Error checking user type:', error);
+      console.log('Error checking user type:', error);
       // Default to dancer profile on error
       router.replace('/(onboarding)/profile-info');
     } finally {

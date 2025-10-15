@@ -52,7 +52,7 @@ export default function ProfileIndexScreen() {
       router.replace('/(auth)/signin');
       
     } catch (error: any) {
-      console.error('Error signing out:', error);
+      console.log('Error signing out:', error);
       
       let errorMessage = 'Failed to sign out. Please try again.';
       

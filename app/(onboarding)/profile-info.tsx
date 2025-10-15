@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { ref, update } from 'firebase/database';
 import { useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Country {
@@ -26,7 +26,6 @@ interface City {
 
 export default function ProfileInfoScreen() {
   const router = useRouter();
-  const [fullName, setFullName] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [selectedState, setSelectedState] = useState<State | null>(null);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
@@ -96,7 +95,7 @@ export default function ProfileInfoScreen() {
         ]
       );
     } catch (error) {
-      console.error('Error requesting image picker:', error);
+      console.log('Error requesting image picker:', error);
       Alert.alert('Error', 'Failed to access image picker');
     }
   };
@@ -122,7 +121,7 @@ export default function ProfileInfoScreen() {
         setProfileImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image from camera:', error);
+      console.log('Error picking image from camera:', error);
       Alert.alert('Error', 'Failed to take photo');
     }
   };
@@ -148,7 +147,7 @@ export default function ProfileInfoScreen() {
         setProfileImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image from library:', error);
+      console.log('Error picking image from library:', error);
       Alert.alert('Error', 'Failed to select image');
     }
   };
@@ -174,11 +173,6 @@ export default function ProfileInfoScreen() {
   };
 
   const handleNext = async () => {
-    if (!fullName.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
-      return;
-    }
-
     setIsLoading(true);
     
     try {
@@ -191,7 +185,6 @@ export default function ProfileInfoScreen() {
       // Update user profile in Firebase Realtime Database
       const userRef = ref(database, `users/${user.uid}/personalInfo`);
       await update(userRef, {
-        fullName: fullName.trim(),
         country: selectedCountry?.name || '',
         state: selectedState?.name || '',
         city: selectedCity?.name || '',
@@ -212,7 +205,7 @@ export default function ProfileInfoScreen() {
       }, 2000);
       
     } catch (error: any) {
-      console.error('Error updating profile:', error);
+      console.log('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -285,24 +278,6 @@ export default function ProfileInfoScreen() {
 
         {/* Form Fields */}
         <View style={styles.formContainer}>
-          {/* Full Name */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <View style={styles.inputField}>
-              <View style={styles.inputIcon}>
-                <Icons.Name width={24} height={24} />
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your full name"
-                placeholderTextColor="#999"
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
-
           {/* Country */}
           <View style={styles.fieldWrapper}>
             <Text style={styles.inputLabel}>Country</Text>
