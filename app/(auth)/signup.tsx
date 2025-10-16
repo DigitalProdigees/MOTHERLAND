@@ -22,6 +22,8 @@ export default function SignUpScreen() {
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [agreePrivacy, setAgreePrivacy] = useState(true);
   const [isInstructor, setIsInstructor] = useState(false);
+  const [userType, setUserType] = useState<string>(''); // Start empty, default to dancer in logic
+  const [showUserTypeDropdown, setShowUserTypeDropdown] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({
@@ -35,6 +37,12 @@ export default function SignUpScreen() {
   const emailRef = useRef<View>(null);
   const passwordRef = useRef<View>(null);
   const confirmPasswordRef = useRef<View>(null);
+
+  // User type options
+  const userTypeOptions = [
+    { id: 'dancer', name: 'Dancer' },
+    { id: 'instructor', name: 'Instructor' },
+  ];
 
   // Animation values for section transitions
   const section1TranslateX = useState(new Animated.Value(0))[0];
@@ -272,8 +280,9 @@ export default function SignUpScreen() {
       });
       
       // Update user type separately since it's specific to email signup
+      // Default to 'dancer' if no user type is selected
       const userRef = ref(database, `users/${user.uid}/personalInfo/userType`);
-      await set(userRef, isInstructor ? 'instructor' : 'dancer');
+      await set(userRef, effectiveUserType);
 
       console.log('Account created successfully:', { uid: user.uid, email: user.email });
       
@@ -369,6 +378,7 @@ export default function SignUpScreen() {
     return '';
   };
 
+
   const handleFullNameChange = (text: string) => {
     setFullName(text);
     // Clear error when user starts typing
@@ -404,6 +414,17 @@ export default function SignUpScreen() {
       setErrors({ ...errors, confirmPassword: '' });
     }
   };
+
+  const handleUserTypeSelect = (selectedUserType: string) => {
+    setUserType(selectedUserType);
+    setIsInstructor(selectedUserType === 'instructor');
+    setShowUserTypeDropdown(false);
+    setFocusedInput(null);
+  };
+
+  // Get the effective user type (defaults to 'dancer' if empty)
+  const effectiveUserType = userType || 'dancer';
+  const effectiveIsInstructor = effectiveUserType === 'instructor';
 
   const handleBlurFullName = () => {
     setFocusedInput(null);
@@ -628,69 +649,62 @@ export default function SignUpScreen() {
           {errors.confirmPassword ? <Text style={section2Styles.errorText}>{errors.confirmPassword}</Text> : null}
         </View>
 
-        {/* Instructor/Dancer Toggle */}
+        {/* User Type Dropdown */}
         <View style={section2Styles.fieldWrapper}>
           <Text style={section2Styles.inputLabel}>I am signing up as:</Text>
-          <View style={section2Styles.userTypeContainer}>
-              {!isInstructor ? (
-                <LinearGradient
-                  colors={['#F708F7', '#C708F7', '#F76B0B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[section2Styles.userTypeButton, section2Styles.userTypeButtonActive]}
-                >
-                  <Pressable
-                    style={section2Styles.userTypeButton}
-                    onPress={() => setIsInstructor(false)}
-                  >
-                    <Text style={[
-                      section2Styles.userTypeText,
-                      section2Styles.userTypeTextActive
-                    ]}>
-                      Dancer
-                    </Text>
-                  </Pressable>
-                </LinearGradient>
-              ) : (
-                <Pressable
-                  style={section2Styles.userTypeButton}
-                  onPress={() => setIsInstructor(false)}
-                >
-                  <Text style={section2Styles.userTypeText}>
-                    Dancer
-                  </Text>
-                </Pressable>
-              )}
-              {isInstructor ? (
-                <LinearGradient
-                  colors={['#F708F7', '#C708F7', '#F76B0B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[section2Styles.userTypeButton, section2Styles.userTypeButtonActive]}
-                >
-                  <Pressable
-                    style={section2Styles.userTypeButton}
-                    onPress={() => setIsInstructor(true)}
-                  >
-                    <Text style={[
-                      section2Styles.userTypeText,
-                      section2Styles.userTypeTextActive
-                    ]}>
-                      Instructor
-                    </Text>
-                  </Pressable>
-                </LinearGradient>
-              ) : (
-                <Pressable
-                  style={section2Styles.userTypeButton}
-                  onPress={() => setIsInstructor(true)}
-                >
-                  <Text style={section2Styles.userTypeText}>
-                    Instructor
-                  </Text>
-                </Pressable>
-              )}
-          </View>
+          <Pressable 
+            style={[
+              section2Styles.inputField,
+              focusedInput === 'userType' && section2Styles.inputFieldFocused
+            ]}
+            onPress={() => {
+              setFocusedInput('userType');
+              setShowUserTypeDropdown(!showUserTypeDropdown);
+            }}
+          >
+            <View style={section2Styles.inputIcon}>
+              <Icons.Profile width={24} height={24} />
+            </View>
+            <Text style={[
+              section2Styles.input, 
+              userType ? section2Styles.selectedText : section2Styles.placeholderText
+            ]}>
+              {userType ? userTypeOptions.find(option => option.id === userType)?.name : 'Select type (optional)'}
+            </Text>
+            <View style={section2Styles.dropdownIcon}>
+              <Text style={[
+                section2Styles.dropdownIconText,
+                showUserTypeDropdown && section2Styles.dropdownIconRotated
+              ]}>▼</Text>
+            </View>
+          </Pressable>
+          
+          {/* Dropdown Options */}
+          {showUserTypeDropdown && (
+            <TouchableWithoutFeedback onPress={() => setShowUserTypeDropdown(false)}>
+              <View style={section2Styles.dropdownOverlay}>
+                <View style={section2Styles.dropdownContainer}>
+                  {userTypeOptions.map((option, index) => (
+                    <Pressable
+                      key={index}
+                      style={[
+                        section2Styles.dropdownItem,
+                        userType === option.id && section2Styles.dropdownItemSelected
+                      ]}
+                      onPress={() => handleUserTypeSelect(option.id)}
+                    >
+                      <Text style={[
+                        section2Styles.dropdownItemText,
+                        userType === option.id && section2Styles.dropdownItemTextSelected
+                      ]}>
+                        {option.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          )}
         </View>
       </View>
 
@@ -762,6 +776,7 @@ export default function SignUpScreen() {
           </Text>
         </Pressable>
       </View>
+
 
     </>
   );
@@ -1058,37 +1073,66 @@ const section2Styles = StyleSheet.create({
   boldText: {
     fontFamily: Fonts.bold,
   },
-  userTypeContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 100,
-    marginTop: 8,
+  dropdownIcon: {
+    marginLeft: 8,
   },
-  userTypeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 19,
-    borderRadius: 96,
-    alignItems: 'center',
-    justifyContent: 'center',
+  dropdownIconText: {
+    fontSize: 12,
+    color: '#666666',
   },
-  userTypeButtonActive: {
-    shadowColor: '#F708F7',
+  dropdownIconRotated: {
+    transform: [{ rotate: '180deg' }],
+  },
+  selectedText: {
+    color: '#000000',
+  },
+  placeholderText: {
+    color: '#999999',
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 22,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    top: 56,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
+    zIndex: 1000,
   },
-  userTypeText: {
+  dropdownItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#8A53C210',
+  },
+  dropdownItemText: {
     fontSize: 16,
-    fontFamily: Fonts.semiBold,
-    color: '#666666',
+    fontFamily: Fonts.regular,
+    color: '#000000',
   },
-  userTypeTextActive: {
-    color: '#FFFFFF',
+  dropdownItemTextSelected: {
+    fontFamily: Fonts.semiBold,
+    color: '#8A53C2',
   },
 });
 

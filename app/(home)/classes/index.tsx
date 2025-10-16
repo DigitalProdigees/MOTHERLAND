@@ -1,10 +1,23 @@
+import FeaturedClassesSection from '@/components/ui/featured-classes-section';
 import GradientBackground from '@/components/ui/gradient-background';
+import StreetDanceSection from '@/components/ui/street-dance-section';
 import { Fonts } from '@/constants/theme';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ClassesIndexScreen() {
+  const router = useRouter();
+
+  const handleClassPress = (classId: string) => {
+    router.push(`/home/${classId}`);
+  };
+
+  const handleSeeAllFeatured = () => {
+    console.log('See all featured pressed');
+  };
+
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
@@ -13,12 +26,14 @@ export default function ClassesIndexScreen() {
             <Text style={styles.title}>Classes</Text>
             <Text style={styles.subtitle}>Discover and join dance classes</Text>
             
-            {/* Placeholder content */}
-            <View style={styles.placeholderContainer}>
-              <Text style={styles.placeholderText}>
-                Classes content will be implemented here
-              </Text>
-            </View>
+            <FeaturedClassesSection
+              onSeeAllPress={handleSeeAllFeatured}
+              onClassPress={handleClassPress}
+            />
+            
+            <StreetDanceSection
+              onClassPress={handleClassPress}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>

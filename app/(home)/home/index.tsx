@@ -49,7 +49,7 @@ export default function HomeIndexScreen() {
   };
 
   const handleClassPress = (classId: string) => {
-    console.log('Class pressed:', classId);
+    router.push(`/home/${classId}`);
   };
 
   return (

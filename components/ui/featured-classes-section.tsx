@@ -21,7 +21,7 @@ const FeaturedClassesSection: React.FC<FeaturedClassesSectionProps> = ({
       rating: '4.9',
       students: '2,847 students',
       description: 'Lorem ipsum dolor sit amet risus phasellus. Morbi Read more...',
-      status: 'Trending Now',
+      status: 'Treading Now',
       statusIcon: '🔥',
     },
     {
@@ -32,7 +32,7 @@ const FeaturedClassesSection: React.FC<FeaturedClassesSectionProps> = ({
       rating: '4.9',
       students: '2,847 students',
       description: 'Lorem ipsum dolor sit amet risus phasellus. Morbi Read more...',
-      status: 'Trending Now',
+      status: 'Treading Now',
       statusIcon: '🔥',
     },
   ];

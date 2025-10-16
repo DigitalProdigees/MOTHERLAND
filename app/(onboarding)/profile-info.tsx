@@ -163,8 +163,10 @@ export default function ProfileInfoScreen() {
   const handleStateSelect = (state: State) => {
     setSelectedState(state);
     setShowStateModal(false);
-    // Reset city when state changes
-    setSelectedCity(null);
+    // Only reset city if the currently selected city doesn't belong to the new state
+    if (selectedCity && selectedCity.state !== state.code) {
+      setSelectedCity(null);
+    }
   };
 
   const handleCitySelect = (city: City) => {
@@ -172,7 +174,15 @@ export default function ProfileInfoScreen() {
     setShowCityModal(false);
   };
 
+  // Check if all required fields are filled
+  const isFormValid = selectedCountry && selectedState && selectedCity;
+
   const handleNext = async () => {
+    if (!isFormValid) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -330,7 +340,7 @@ export default function ProfileInfoScreen() {
         <GradientButton
           title={isLoading ? "Saving..." : "Next"}
           onPress={handleNext}
-          disabled={isLoading}
+          disabled={isLoading || !isFormValid}
         />
       </View>
 
@@ -478,7 +488,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingHorizontal: 32,
-    paddingBottom: 32,
+    paddingBottom: 32,   alignItems: 'center'
   },
   modalOverlay: {
     flex: 1,

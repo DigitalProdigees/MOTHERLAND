@@ -3,8 +3,8 @@ import { Fonts, Icons } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { ref, update } from 'firebase/database';
-import { useState } from 'react';
+import { onValue, ref, update } from 'firebase/database';
+import { useEffect, useState } from 'react';
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,6 +38,7 @@ export default function InstructorProfileScreen() {
   const [selectedState, setSelectedState] = useState<State | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   // Modal states
@@ -91,6 +92,60 @@ export default function InstructorProfileScreen() {
     { name: 'San Antonio', state: 'TX' },
     { name: 'San Diego', state: 'CA' },
   ];
+
+  // Fetch existing profile data
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      const userRef = ref(database, `users/${user.uid}/personalInfo`);
+      const unsubscribe = onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          // Prefill form with existing data
+          setExperience(data.experience || '');
+          setDescription(data.description || '');
+          setProfileImage(data.profileImageUri || null);
+          
+          // Set country
+          if (data.country) {
+            const country = countries.find(c => c.name === data.country);
+            if (country) {
+              setSelectedCountry(country);
+            }
+          }
+          
+          // Set state
+          if (data.state) {
+            const state = states.find(s => s.name === data.state);
+            if (state) {
+              setSelectedState(state);
+            }
+          }
+          
+          // Set city
+          if (data.city) {
+            const city = cities.find(c => c.name === data.city);
+            if (city) {
+              setSelectedCity(city);
+            }
+          }
+          
+          // Set class type
+          if (data.classType) {
+            const classType = classTypes.find(c => c.name === data.classType);
+            if (classType) {
+              setSelectedClassType(classType);
+            }
+          }
+        }
+        setIsLoadingProfile(false);
+      });
+
+      return () => unsubscribe();
+    } else {
+      setIsLoadingProfile(false);
+    }
+  }, []);
 
   const handleImagePicker = async () => {
     try {
@@ -182,8 +237,10 @@ export default function InstructorProfileScreen() {
   const handleStateSelect = (state: State) => {
     setSelectedState(state);
     setShowStateModal(false);
-    // Reset city when state changes
-    setSelectedCity(null);
+    // Only reset city if the currently selected city doesn't belong to the new state
+    if (selectedCity && selectedCity.state !== state.code) {
+      setSelectedCity(null);
+    }
   };
 
   const handleCitySelect = (city: City) => {
@@ -196,17 +253,12 @@ export default function InstructorProfileScreen() {
     setShowClassTypeModal(false);
   };
 
+  // Check if all required fields are filled
+  const isFormValid = experience.trim() && selectedClassType && description.trim() && selectedCountry && selectedState && selectedCity;
+
   const handleNext = async () => {
-    if (!experience.trim()) {
-      Alert.alert('Error', 'Please enter your experience');
-      return;
-    }
-    if (!selectedClassType) {
-      Alert.alert('Error', 'Please select a type of class');
-      return;
-    }
-    if (!description.trim()) {
-      Alert.alert('Error', 'Please enter your description');
+    if (!isFormValid) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
@@ -290,6 +342,16 @@ export default function InstructorProfileScreen() {
       </View>
     </Modal>
   );
+
+  if (isLoadingProfile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -431,7 +493,7 @@ export default function InstructorProfileScreen() {
         <GradientButton
           title={isLoading ? "Saving..." : "Save"}
           onPress={handleNext}
-          disabled={isLoading}
+          disabled={isLoading || !isFormValid}
         />
       </View>
 
@@ -499,6 +561,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: Fonts.regular,
+    color: '#666666',
   },
   customHeader: {
     flexDirection: 'row',
@@ -625,6 +697,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 32,
     paddingVertical:9,
+    alignItems: 'center',
   },
   modalOverlay: {
     flex: 1,

@@ -1,6 +1,7 @@
+import Star from '@/assets/svg/Star';
 import { Fonts } from '@/constants/theme';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface DanceClassCardProps {
   title: string;
@@ -39,84 +40,93 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
       ]}
       onPress={onPress}
     >
+      {/* Left Image Section */}
       <View style={styles.imageContainer}>
-        <View style={styles.imagePlaceholder}>
-          <Text style={styles.imageText}>🎭</Text>
-        </View>
-        {status && (
-          <View style={styles.statusOverlay}>
-            <Text style={styles.statusIcon}>{statusIcon}</Text>
-            <Text style={styles.statusText}>{status}</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        <Text style={styles.price}>{price}</Text>
-        
-        <View style={styles.subscribersContainer}>
-          <Text style={styles.subscribersText}>Subscribers</Text>
-        </View>
-
-        <Text style={styles.description} numberOfLines={3}>
-          {description}
-        </Text>
-
+        <Image 
+          source={require('@/assets/svg/cardimage.png')}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        {/* Rating below image */}
         <View style={styles.ratingContainer}>
           <Text style={styles.rating}>{rating}</Text>
           <View style={styles.stars}>
             {[...Array(5)].map((_, index) => (
-              <Text key={index} style={styles.star}>⭐</Text>
+              <Star key={index} width={18} height={18} />
             ))}
           </View>
         </View>
+        
+        {/* Status text */}
+        <Text style={styles.statusLabel}>Status</Text>
+      </View>
 
-        <View style={styles.instructorContainer}>
+      {/* Right Content Section */}
+      <View style={styles.content}>
+        {/* Title */}
+        <Text style={styles.title}>{title}</Text>
+        
+        {/* Price and Subscribers Row */}
+        <View style={styles.priceRow}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.priceLabel}>Price:</Text>
+          </View>
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+            <Text style={styles.priceValue}>{price}</Text>
+          <View style={styles.subscribersContainer}>
+            <Text style={styles.subscribersText}>Subscribers</Text>
+          </View> </View>
+        </View>
+
+        {/* Instructor Row */}
+        <View style={styles.instructorRow}>
+          <Text style={styles.instructorLabel}>Instructor:</Text>
           <View style={styles.instructorInfo}>
-            <View style={styles.instructorAvatar}>
-              <Text style={styles.avatarText}>👨</Text>
-            </View>
+            <Image 
+              source={require('@/assets/images/instructor.png')}
+              style={styles.instructorIcon}
+            />
             <Text style={styles.instructor}>{instructor}</Text>
           </View>
-          
+        </View>
+
+        {/* Description */}
+        <Text style={styles.description} numberOfLines={2}>
+          {description}
+        </Text>
+
+        {/* Bottom Stats Row */}
+        <View style={styles.statsRow}>
+          {/* Students */}
           <View style={styles.studentsContainer}>
-            <Text style={styles.studentsIcon}>👥</Text>
+            <Image 
+              source={require('@/assets/svg/user.png')}
+              style={styles.userIcon}
+            />
             <Text style={styles.students}>{students}</Text>
           </View>
         </View>
 
-        {duration && (
-          <View style={styles.durationContainer}>
-            <Text style={styles.durationIcon}>⏰</Text>
-            <Text style={styles.duration}>{duration}</Text>
-          </View>
-        )}
-
-        {seatAvailability && (
-          <View style={styles.seatContainer}>
-            <Text style={styles.seatIcon}>🎫</Text>
-            <Text style={styles.seatText}>{seatAvailability}</Text>
-          </View>
-        )}
-
+        {/* Trending Status */}
         {status && (
           <View style={styles.trendingContainer}>
-            <Text style={styles.trendingIcon}>🔥</Text>
+            <Image 
+              source={require('@/assets/images/fire.png')}
+              style={styles.fireIcon}
+            />
             <Text style={styles.trendingText}>{status}</Text>
           </View>
         )}
       </View>
-
-      <View style={styles.gradientOverlay} />
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    padding: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 10,
     marginHorizontal: 20,
     marginBottom: 16,
     shadowColor: '#000',
@@ -128,191 +138,160 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'hidden',
-    position: 'relative',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   imageContainer: {
-    height: 120,
-    position: 'relative',
+    width: 101,
+    height: 138,
   },
-  imagePlaceholder: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imageText: {
-    fontSize: 48,
-  },
-  statusOverlay: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statusIcon: {
-    fontSize: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontFamily: Fonts.medium,
-    color: '#8B5CF6',
+  image: {
+    width: 101,
+    height: 138,
+  
   },
   content: {
-    padding: 16,
+    flex: 1,
+    position: 'relative',
+    marginLeft: 16,
+    
   },
   title: {
     fontSize: 18,
     fontFamily: Fonts.bold,
     color: '#000000',
     marginBottom: 8,
+    lineHeight: 22,
   },
-  price: {
-    fontSize: 16,
-    fontFamily: Fonts.semiBold,
-    color: '#000000',
-    marginBottom: 8,
-  },
-  subscribersContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginBottom: 12,
-  },
-  subscribersText: {
-    fontSize: 12,
-    fontFamily: Fonts.medium,
-    color: '#6B7280',
-  },
-  description: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
-  rating: {
-    fontSize: 14,
-    fontFamily: Fonts.semiBold,
-    color: '#000000',
-  },
-  stars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  star: {
-    fontSize: 12,
-  },
-  instructorContainer: {
+  priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priceLabel: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+    marginRight: 4,
+  },
+  priceValue: {
+    fontSize: 16,
+    fontFamily: Fonts.bold,
+    color: '#000000',
+  },
+  subscribersContainer: {
+    backgroundColor: '#E0E0E0',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 6,
+  },
+  subscribersText: {
+    fontSize: 11,
+    fontFamily: Fonts.medium,
+    color: '#000000',
+  },
+  instructorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  instructorLabel: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+  },
   instructorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  instructorAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#E5E7EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 12,
+  instructorIcon: {
+    width: 20,
+    height: 20,
   },
   instructor: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: Fonts.medium,
     color: '#000000',
+  },
+  description: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  statsRow: {
+  
+   alignSelf:'flex-end',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 12,
+  },
+  rating: {
+    fontSize: 16,
+    fontFamily: Fonts.medium,
+    color: '#000000',
+  },
+  statusLabel: {
+    fontSize: 16,
+    fontFamily: Fonts.medium,
+    color: '#808B95',
+    marginTop: 27
+  },
+  stars: {
+    flexDirection: 'row',
+    gap: 1,
   },
   studentsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginBottom: 8,
   },
-  studentsIcon: {
-    fontSize: 14,
-    color: '#8B5CF6',
+  userIcon: {
+    width: 25 ,
+    height: 25,
   },
   students: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: Fonts.regular,
-    color: '#6B7280',
-  },
-  durationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  durationIcon: {
-    fontSize: 14,
-    color: '#8B5CF6',
-  },
-  duration: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: '#6B7280',
-  },
-  seatContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  seatIcon: {
-    fontSize: 14,
-    color: '#8B5CF6',
-  },
-  seatText: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: '#6B7280',
+    color: '#666666',
   },
   trendingContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FEF3C7',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    width:'55%',
+    flexDirection:'row',
+    alignItems:'center',
+    justifyContent:'center',
+    alignSelf:'flex-end',
     gap: 4,
   },
-  trendingIcon: {
-    fontSize: 12,
-  },
   trendingText: {
-    fontSize: 12,
-    fontFamily: Fonts.medium,
-    color: '#92400E',
+    fontSize: 13,
+    fontFamily: Fonts.semiBold,
+    color: '#000000',
   },
-  gradientOverlay: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
+  fireIcon: {
+    marginRight: 4,
     width: 20,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    height: 20,
   },
 });
 
 export default DanceClassCard;
+

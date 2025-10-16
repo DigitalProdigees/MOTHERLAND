@@ -429,5 +429,6 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 32,
     paddingBottom: 32,
+    alignItems: 'center',
   },
 });

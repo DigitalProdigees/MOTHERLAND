@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import DanceClassCard from './dance-class-card';
+import StreetDanceCard from './street-dance-card';
 
 interface StreetDanceSectionProps {
   onClassPress?: (classId: string) => void;
@@ -38,7 +38,7 @@ const StreetDanceSection: React.FC<StreetDanceSectionProps> = ({
     <View style={styles.container}>
       <View style={styles.classesList}>
         {streetDanceClasses.map((danceClass) => (
-          <DanceClassCard
+          <StreetDanceCard
             key={danceClass.id}
             title={danceClass.title}
             price={danceClass.price}

@@ -190,5 +190,6 @@ const styles = StyleSheet.create({
   profileActions: {
     paddingHorizontal: 32,
     paddingBottom: 100, // Extra padding for tab bar
+    alignItems: 'center',
   },
 });
