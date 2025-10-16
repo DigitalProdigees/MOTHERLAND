@@ -15,8 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function SignInScreen() {
   const router = useRouter();
   const [currentSection, setCurrentSection] = useState(1);
-  const [email, setEmail] = useState('tamoormalik088@gmail.com');
-  const [password, setPassword] = useState('88888888');
+  const [email, setEmail] = useState(__DEV__?'tamoormalik088@gmail.com':'');
+  const [password, setPassword] = useState(__DEV__?'88888888':'');
   const [rememberMe, setRememberMe] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);

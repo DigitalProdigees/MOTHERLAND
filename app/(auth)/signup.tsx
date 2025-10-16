@@ -15,12 +15,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function SignUpScreen() {
   const router = useRouter();
   const [currentSection, setCurrentSection] = useState(1);
-  const [fullName, setFullName] = useState('Tamoor Malik');
-  const [email, setEmail] = useState('tamoormalik088@gmail.com');
-  const [password, setPassword] = useState('88888888');
-  const [confirmPassword, setConfirmPassword] = useState('88888888');
-  const [agreeTerms, setAgreeTerms] = useState(true);
-  const [agreePrivacy, setAgreePrivacy] = useState(true);
+  const [fullName, setFullName] = useState(__DEV__?'Tamoor Malik':'');
+  const [email, setEmail] = useState(__DEV__?'tamoormalik088@gmail.com':'');
+  const [password, setPassword] = useState(__DEV__?'88888888':'');
+  const [confirmPassword, setConfirmPassword] = useState(__DEV__?'88888888':'');
+  const [agreeTerms, setAgreeTerms] = useState(__DEV__?true:false);
+  const [agreePrivacy, setAgreePrivacy] = useState(__DEV__?true:false);
   const [isInstructor, setIsInstructor] = useState(false);
   const [userType, setUserType] = useState<string>(''); // Start empty, default to dancer in logic
   const [showUserTypeDropdown, setShowUserTypeDropdown] = useState(false);
@@ -31,6 +31,7 @@ export default function SignUpScreen() {
     email: '',
     password: '',
     confirmPassword: '',
+    userType: '',
   });
   const scrollViewRef = useRef<ScrollView>(null);
   const fullNameRef = useRef<View>(null);
@@ -254,6 +255,22 @@ export default function SignUpScreen() {
   };
 
   const handleCreateAccount = async () => {
+    // Validate all fields including user type
+    const nameError = validateFullName(fullName);
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    const confirmPasswordError = validateConfirmPassword(confirmPassword, password);
+    const userTypeError = validateUserType(userType);
+    
+    // Set all errors to show validation messages
+    setErrors({
+      fullName: nameError,
+      email: emailError,
+      password: passwordError,
+      confirmPassword: confirmPasswordError,
+      userType: userTypeError,
+    });
+    
     if (!isFormValid()) {
       Alert.alert('Error', 'Please fill in all fields correctly');
       return;
@@ -378,6 +395,13 @@ export default function SignUpScreen() {
     return '';
   };
 
+  const validateUserType = (userType: string) => {
+    if (!userType) {
+      return 'Please select a user type';
+    }
+    return '';
+  };
+
 
   const handleFullNameChange = (text: string) => {
     setFullName(text);
@@ -420,6 +444,10 @@ export default function SignUpScreen() {
     setIsInstructor(selectedUserType === 'instructor');
     setShowUserTypeDropdown(false);
     setFocusedInput(null);
+    // Clear error when user selects a type
+    if (errors.userType) {
+      setErrors({ ...errors, userType: '' });
+    }
   };
 
   // Get the effective user type (defaults to 'dancer' if empty)
@@ -451,12 +479,14 @@ export default function SignUpScreen() {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     const confirmPasswordError = validateConfirmPassword(confirmPassword, password);
+    const userTypeError = validateUserType(userType);
     
     return (
       !nameError &&
       !emailError &&
       !passwordError &&
       !confirmPasswordError &&
+      !userTypeError &&
       agreeTerms &&
       agreePrivacy
     );
@@ -655,7 +685,8 @@ export default function SignUpScreen() {
           <Pressable 
             style={[
               section2Styles.inputField,
-              focusedInput === 'userType' && section2Styles.inputFieldFocused
+              focusedInput === 'userType' && section2Styles.inputFieldFocused,
+              errors.userType && section2Styles.inputFieldError
             ]}
             onPress={() => {
               setFocusedInput('userType');
@@ -663,13 +694,13 @@ export default function SignUpScreen() {
             }}
           >
             <View style={section2Styles.inputIcon}>
-              <Icons.Profile width={24} height={24} />
+              <Icons.Name width={24} height={24} />
             </View>
             <Text style={[
               section2Styles.input, 
               userType ? section2Styles.selectedText : section2Styles.placeholderText
             ]}>
-              {userType ? userTypeOptions.find(option => option.id === userType)?.name : 'Select type (optional)'}
+              {userType ? userTypeOptions.find(option => option.id === userType)?.name : 'Select type'}
             </Text>
             <View style={section2Styles.dropdownIcon}>
               <Text style={[
@@ -678,6 +709,7 @@ export default function SignUpScreen() {
               ]}>▼</Text>
             </View>
           </Pressable>
+          {errors.userType ? <Text style={section2Styles.errorText}>{errors.userType}</Text> : null}
           
           {/* Dropdown Options */}
           {showUserTypeDropdown && (

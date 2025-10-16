@@ -75,7 +75,8 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
             <Text style={styles.priceValue}>{price}</Text>
           <View style={styles.subscribersContainer}>
             <Text style={styles.subscribersText}>Subscribers</Text>
-          </View> </View>
+          </View>
+           </View>
         </View>
 
         {/* Instructor Row */}

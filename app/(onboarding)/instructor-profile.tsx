@@ -460,18 +460,7 @@ export default function InstructorProfileScreen() {
             </Pressable>
           </View>
 
-          {/* City */}
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.inputLabel}>City</Text>
-            <Pressable style={styles.inputField} onPress={() => setShowCityModal(true)}>
-              <View style={styles.inputIcon}>
-                <Icons.City width={24} height={24} />
-              </View>
-              <Text style={[styles.input, selectedCity ? styles.selectedText : styles.placeholderText]}>
-                {selectedCity ? selectedCity.name : 'New York'}
-              </Text>
-            </Pressable>
-          </View>
+        
 
           {/* State */}
           <View style={styles.fieldWrapper}>
@@ -482,6 +471,18 @@ export default function InstructorProfileScreen() {
               </View>
               <Text style={[styles.input, selectedState ? styles.selectedText : styles.placeholderText]}>
                 {selectedState ? selectedState.name : 'Great Street 01'}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.inputLabel}>City</Text>
+            <Pressable style={styles.inputField} onPress={() => setShowCityModal(true)}>
+              <View style={styles.inputIcon}>
+                <Icons.City width={24} height={24} />
+              </View>
+              <Text style={[styles.input, selectedCity ? styles.selectedText : styles.placeholderText]}>
+                {selectedCity ? selectedCity.name : 'New York'}
               </Text>
             </Pressable>
           </View>
