@@ -14,6 +14,13 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)"/>
           <Stack.Screen name="(home)" />
           <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="favourites" />
+          <Stack.Screen name="my-subscriptions" />
+          <Stack.Screen name="my-bookings" />
+          <Stack.Screen name="contact-us" />
+          <Stack.Screen name="change-password" />
+          <Stack.Screen name="forgot-password" />
+          <Stack.Screen name="reset-password" />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>

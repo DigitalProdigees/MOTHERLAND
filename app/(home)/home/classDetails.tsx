@@ -1,4 +1,3 @@
-import Back from '@/assets/svg/Back';
 import Star from '@/assets/svg/Star';
 import GradientBackground from '@/components/ui/gradient-background';
 import { Fonts } from '@/constants/theme';
@@ -110,7 +109,11 @@ export default function ClassDetailsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={handleBackPress}>
-          <Back width={24} height={24} color="#8B5CF6" />
+          <Image
+            source={require('@/assets/images/chevron-left.png')}
+            style={styles.backIcon}
+            resizeMode="contain"
+          />
         </Pressable>
         <Text style={styles.headerTitle}>Class Details</Text>
         <Pressable style={styles.bookmarkButton}>
@@ -382,11 +385,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
     
     paddingTop: 10,
     paddingBottom: 20,
-    minHeight: 50,
   },
   headerTitle: {
     fontSize: 18,
@@ -412,6 +414,10 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
   },
   scrollView: {
     flex: 1,

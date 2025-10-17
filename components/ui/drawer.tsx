@@ -1,6 +1,6 @@
 import { Fonts } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import Animated, {
+  interpolate,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming
@@ -34,6 +36,8 @@ const Drawer: React.FC<DrawerProps> = ({
 }) => {
   const translateX = useSharedValue(-width);
   const opacity = useSharedValue(0);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const toggleAnimation = useSharedValue(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -57,8 +61,42 @@ const Drawer: React.FC<DrawerProps> = ({
     };
   });
 
+  const toggleBackgroundStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      toggleAnimation.value,
+      [0, 1],
+      ['#E0E0E0', '#C708F7']
+    );
+    return {
+      backgroundColor,
+    };
+  });
+
+  const toggleCircleStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      toggleAnimation.value,
+      [0, 1],
+      [0, 20]
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
   const handleOverlayPress = () => {
     onClose();
+  };
+
+  const handleNotificationToggle = () => {
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+    toggleAnimation.value = withTiming(newValue ? 1 : 0, { duration: 200 });
+  };
+
+  const handleMenuPress = (item: string) => {
+    if (item !== 'Notifications') {
+      onMenuPress(item);
+    }
   };
 
   const menuItems = [
@@ -67,6 +105,7 @@ const Drawer: React.FC<DrawerProps> = ({
     'Products',
     'My Post',
     'My Favourites',
+    'My Bookings',
     'Subscriptions',
     'Change Password',
     'Notifications',
@@ -91,49 +130,63 @@ const Drawer: React.FC<DrawerProps> = ({
             </Pressable>
           </View>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* User Profile Section */}
-            <View style={styles.profileSection}>
-              <View style={styles.profileRow}>
-                <View style={styles.profileImageContainer}>
-                  <Image
-                    source={require('@/assets/images/annie-bens.png')}
-                    style={styles.profileImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.profileBorder} />
-                </View>
-                <View style={styles.profileInfo}>
-                  <Text style={styles.userName}>Jhon Dea</Text>
-                  <Pressable style={styles.editProfileButton}>
-                    <LinearGradient
-                      colors={['#F708F7', '#C708F7']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{borderRadius:100,width:120,alignItems:'center'}}
-                    >
-                      <Text style={styles.editButtonText}>Edit Profile</Text>
-                    </LinearGradient>
-                  </Pressable>
-                </View>
+          {/* User Profile Section - Fixed at top */}
+          <LinearGradient
+            colors={['rgba(247, 8, 247, 0.2)', 'rgba(199, 8, 247, 0.2)', 'rgba(247, 106, 11, 0.2)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.profileSection}
+          >
+            <View style={styles.profileRow}>
+              <View style={styles.profileImageContainer}>
+                <Image
+                  source={require('@/assets/images/annie-bens.png')}
+                  style={styles.profileImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.profileBorder} />
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.userName}>Jhon Dea</Text>
+                <Pressable style={styles.editProfileButton}>
+                  <LinearGradient
+                    colors={['#F708F7', '#C708F7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{borderRadius:100,width:120,alignItems:'center'}}
+                  >
+                    <Text style={styles.editButtonText}>Edit Profile</Text>
+                  </LinearGradient>
+                </Pressable>
               </View>
             </View>
+          </LinearGradient>
 
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* Menu Items */}
             <View style={styles.menuSection}>
               {menuItems.map((item, index) => (
                 <Pressable
                   key={index}
                   style={styles.menuItem}
-                  onPress={() => onMenuPress(item)}
+                  onPress={() => handleMenuPress(item)}
                 >
                   <Text style={styles.menuText}>{item}</Text>
                   {item === 'Notifications' && (
-                    <View style={styles.toggleContainer}>
-                      <View style={styles.toggleOff}>
-                        <View style={styles.toggleCircle} />
-                      </View>
-                    </View>
+                    <Pressable 
+                      style={styles.toggleContainer}
+                      onPress={handleNotificationToggle}
+                    >
+                      <Animated.View style={[
+                        styles.toggleOff, 
+                        toggleBackgroundStyle
+                      ]}>
+                        <Animated.View style={[
+                          styles.toggleCircle,
+                          toggleCircleStyle
+                        ]} />
+                      </Animated.View>
+                    </Pressable>
                   )}
                 </Pressable>
               ))}
@@ -210,8 +263,11 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     marginBottom: 40,
-    borderWidth:1,
-    paddingHorizontal:-20,
+    paddingHorizontal: 20,
+    marginRight: 40,
+    paddingVertical: 20,
+    borderTopRightRadius: 24,
+    borderBottomRightRadius: 20,
   },
   profileRow: {
     flexDirection: 'row',
@@ -225,9 +281,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileImage: {
-    width: 70,
-    height: 70,
+    width: 75,
+    height: 75,
     borderRadius: 35,
+    borderColor:'#C708F7',
+    borderWidth:1,
+    padding:2,
   },
   profileBorder: {
     position: 'absolute',
@@ -259,6 +318,7 @@ const styles = StyleSheet.create({
   },
   menuSection: {
     marginBottom: 40,
+    paddingHorizontal:20,
   },
   menuItem: {
     flexDirection: 'row',
@@ -279,7 +339,6 @@ const styles = StyleSheet.create({
   toggleOff: {
     width: 44,
     height: 24,
-    backgroundColor: '#E0E0E0',
     borderRadius: 12,
     justifyContent: 'center',
     paddingHorizontal: 2,
@@ -305,6 +364,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
+    paddingHorizontal:20,
   },
   logoutIcon: {
     width: 20,

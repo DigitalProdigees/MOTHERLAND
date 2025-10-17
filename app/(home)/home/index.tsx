@@ -62,7 +62,45 @@ export default function HomeIndexScreen() {
   const handleDrawerMenuPress = (menuItem: string) => {
     console.log('Drawer menu pressed:', menuItem);
     setIsDrawerOpen(false);
+    
     // Add navigation logic for different menu items
+    switch (menuItem) {
+      case 'My Favourites':
+        router.push('/favourites');
+        break;
+      case 'My Bookings':
+        router.push('/my-bookings');
+        break;
+      case 'Library':
+        // Add navigation to library screen
+        break;
+      case 'Switch as Instructor':
+        // Add navigation to instructor mode
+        break;
+      case 'Products':
+        // Add navigation to products screen
+        break;
+      case 'My Post':
+        // Add navigation to my posts screen
+        break;
+      case 'Subscriptions':
+        router.push('/my-subscriptions');
+        break;
+      case 'Change Password':
+        router.push('/change-password');
+        break;
+      case 'Contact Us':
+        router.push('/contact-us');
+        break;
+      case 'Terms of services':
+        // Add navigation to terms screen
+        break;
+      case 'Privacy Policy':
+        // Add navigation to privacy policy screen
+        break;
+      default:
+        break;
+    }
   };
 
   const handleLogout = () => {

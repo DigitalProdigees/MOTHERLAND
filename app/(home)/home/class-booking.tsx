@@ -1,4 +1,3 @@
-import Back from '@/assets/svg/Back';
 import Star from '@/assets/svg/Star';
 import GradientBackground from '@/components/ui/gradient-background';
 import { Fonts } from '@/constants/theme';
@@ -37,7 +36,11 @@ export default function ClassBookingScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={handleBackPress}>
-          <Back width={24} height={24} color="#8B5CF6" />
+          <Image
+            source={require('@/assets/images/chevron-left.png')}
+            style={styles.backIcon}
+            resizeMode="contain"
+          />
         </Pressable>
         <Text style={styles.headerTitle}>Booking</Text>
         <Pressable style={styles.bookmarkButton}>
@@ -293,6 +296,10 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
   },
   bookmarkButton: {
     padding: 8,

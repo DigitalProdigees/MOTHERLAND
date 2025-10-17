@@ -362,7 +362,11 @@ export default function InstructorProfileScreen() {
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <Icons.Back width={24} height={24} />
+          <Image
+            source={require('@/assets/images/chevron-left.png')}
+            style={styles.backIcon}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         
         <View style={styles.titleContainer}>
@@ -586,6 +590,10 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
   },
   titleContainer: {
     flex: 1,

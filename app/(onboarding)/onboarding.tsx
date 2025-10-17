@@ -132,7 +132,11 @@ export default function OnboardingScreen() {
                 ]}
                 onPress={handleBack}
               >
-                <Text style={styles.backButtonIcon}>←</Text>
+                <Image
+                  source={require('@/assets/images/chevron-left.png')}
+                  style={styles.backButtonIcon}
+                  resizeMode="contain"
+                />
               </Pressable>
             </View>
           )}
@@ -262,9 +266,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   backButtonIcon: {
-    color: '#808B95',
-    fontSize: 24,
-    fontFamily: Fonts.bold,
+    width: 24,
+    height: 24,
   },
   nextButtonContainer: {
     alignItems: 'flex-end',

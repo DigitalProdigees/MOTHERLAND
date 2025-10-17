@@ -1,7 +1,7 @@
-import { Colors, Fonts, Icons } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface HeaderProps {
   title: string;
@@ -28,7 +28,11 @@ export default function Header({
             onPress={onBackPress}
             activeOpacity={0.7}
           >
-            <Icons.Back width={24} height={24} />
+            <Image
+              source={require('@/assets/images/chevron-left.png')}
+              style={styles.backIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         )}
         
@@ -58,6 +62,10 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 8,
     alignSelf: 'flex-start',
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
   },
   titleContainer: {
     alignItems: 'center',

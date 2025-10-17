@@ -1,7 +1,6 @@
-import { Icons } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Image, Pressable, StyleSheet } from 'react-native';
 
 interface GradientBackButtonProps {
   onPress: () => void;
@@ -22,7 +21,11 @@ export default function GradientBackButton({ onPress }: GradientBackButtonProps)
         end={{ x: 1.2, y: 0 }}
         style={styles.gradient}
       >
-        <Icons.Back width={24} height={24} />
+        <Image
+          source={require('@/assets/images/chevron-left.png')}
+          style={styles.backIcon}
+          resizeMode="contain"
+        />
       </LinearGradient>
     </Pressable>
   );
@@ -36,9 +39,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   gradient: {
-flex: 1,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
   },
 });
