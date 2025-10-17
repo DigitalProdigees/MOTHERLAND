@@ -1,52 +1,63 @@
 import { Fonts, Icons } from '@/constants/theme';
+import { useDrawer } from '@/contexts/DrawerContext';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const { isDrawerOpen } = useDrawer();
   const currentRoute = state.routes[state.index].name;
   
-  // Check if we're on a class details screen (dynamic route in home tab)
-  const isClassDetailsScreen = currentRoute === 'home' && 
-    state.routes[state.index].params && 
-    'id' in state.routes[state.index].params;
+  // Check if we're on a class details screen or class booking screen (nested under home tab)
+  const nestedRoute = state.routes[state.index].state?.routes?.[state.routes[state.index].state?.index || 0]?.name;
+  const isClassDetailsScreen = currentRoute === 'home' && nestedRoute === 'classDetails';
+  const isClassBookingScreen = currentRoute === 'home' && nestedRoute === 'class-booking';
+  const shouldUseGradientTabBar = isClassDetailsScreen || isClassBookingScreen;
+  
+  // Hide tab bar when drawer is open
+  if (isDrawerOpen) {
+    return null;
+  }
+  
+  // Debug logging
+  console.log('Tab Bar Debug:', { currentRoute, nestedRoute, isClassDetailsScreen, isClassBookingScreen, shouldUseGradientTabBar });
 
   const getTabBarStyle = () => {
-    if (currentRoute === 'classes' || isClassDetailsScreen) {
+    if (shouldUseGradientTabBar) {
       return styles.gradientTabBar;
     }
     return styles.whiteTabBar;
   };
 
   const getTabBarLabelStyle = () => {
-    if (currentRoute === 'classes' || isClassDetailsScreen) {
+    if (shouldUseGradientTabBar) {
       return styles.gradientTabBarLabel;
     }
     return styles.whiteTabBarLabel;
   };
 
   const getTabIconColor = (focused: boolean) => {
-    if (currentRoute === 'classes' || isClassDetailsScreen) {
+    if (shouldUseGradientTabBar) {
       return '#FFFFFF';
     }
     return focused ? '#8B5CF6' : '#999999';
   };
 
   const getTabLabelColor = (focused: boolean) => {
-    if (currentRoute === 'classes' || isClassDetailsScreen) {
+    if (shouldUseGradientTabBar) {
       return '#FFFFFF';
     }
     return focused ? '#8B5CF6' : '#999999';
   };
 
   const renderTabBar = () => {
-    if (currentRoute === 'classes' || isClassDetailsScreen) {
+    if (shouldUseGradientTabBar) {
       return (
         <LinearGradient
-          colors={['#8B5CF6', '#EC4899']}
+          colors={['#F708F7', '#C708F7', '#F76B0B']}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={styles.gradientTabBar}
         >
           {state.routes.map((route, index) => {

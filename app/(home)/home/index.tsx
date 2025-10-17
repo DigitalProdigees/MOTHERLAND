@@ -1,9 +1,11 @@
 import AppHeader from '@/components/ui/app-header';
 import CategoriesSection from '@/components/ui/categories-section';
+import Drawer from '@/components/ui/drawer';
 import FeaturedClassesSection from '@/components/ui/featured-classes-section';
 import GradientBackground from '@/components/ui/gradient-background';
 import SearchBar from '@/components/ui/search-bar';
 import StreetDanceSection from '@/components/ui/street-dance-section';
+import { useDrawer } from '@/contexts/DrawerContext';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StatusBar, StyleSheet } from 'react-native';
@@ -11,9 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeIndexScreen() {
   const router = useRouter();
+  const { isDrawerOpen, setIsDrawerOpen } = useDrawer();
 
   const handleMenuPress = () => {
-    console.log('Menu pressed');
+    setIsDrawerOpen(true);
   };
 
   const handleAddPress = () => {
@@ -49,7 +52,23 @@ export default function HomeIndexScreen() {
   };
 
   const handleClassPress = (classId: string) => {
-    router.push(`/home/${classId}`);
+    router.push(`/home/classDetails?id=${classId}`);
+  };
+
+  const handleDrawerClose = () => {
+    setIsDrawerOpen(false);
+  };
+
+  const handleDrawerMenuPress = (menuItem: string) => {
+    console.log('Drawer menu pressed:', menuItem);
+    setIsDrawerOpen(false);
+    // Add navigation logic for different menu items
+  };
+
+  const handleLogout = () => {
+    console.log('Logout pressed');
+    setIsDrawerOpen(false);
+    // Add logout logic here
   };
 
   return (
@@ -88,6 +107,13 @@ export default function HomeIndexScreen() {
             onClassPress={handleClassPress}
           />
         </ScrollView>
+        
+        <Drawer
+          isOpen={isDrawerOpen}
+          onClose={handleDrawerClose}
+          onMenuPress={handleDrawerMenuPress}
+          onLogout={handleLogout}
+        />
       </SafeAreaView>
     </GradientBackground>
   );

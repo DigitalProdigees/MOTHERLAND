@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 6,
   },
   subscribersText: {
     fontSize: 12,

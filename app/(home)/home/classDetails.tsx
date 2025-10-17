@@ -1,17 +1,18 @@
 import Back from '@/assets/svg/Back';
 import Star from '@/assets/svg/Star';
+import GradientBackground from '@/components/ui/gradient-background';
 import { Fonts } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
+    Dimensions,
+    Image,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -21,6 +22,8 @@ export default function ClassDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const classData = {
     id: id as string,
@@ -66,14 +69,18 @@ export default function ClassDetailsScreen() {
         },
       ],
     },
-    price: '$10/day',
+    price: '$0/day',
     subscriptionStatus: 'Non Subscribed',
   };
 
   const carouselImages = [
+    require('@/assets/images/streetcard.png'),
     require('@/assets/images/carousal1.png'),
     require('@/assets/images/carousal2.png'),
     require('@/assets/images/carousal3.png'),
+    require('@/assets/images/annie-bens.png'),
+    require('@/assets/images/availability.png'),
+    require('@/assets/images/bookmark.png'),
   ];
 
   const handleBackPress = () => {
@@ -81,7 +88,19 @@ export default function ClassDetailsScreen() {
   };
 
   const handleBookPress = () => {
-    console.log('Book pressed');
+    router.push('/home/class-booking');
+  };
+
+  const handleDotPress = (index: number) => {
+    setCurrentImageIndex(index);
+    scrollViewRef.current?.scrollTo({
+      x: index * width,
+      animated: true,
+    });
+  };
+
+  const handleBioToggle = () => {
+    setIsBioExpanded(!isBioExpanded);
   };
 
   return (
@@ -106,16 +125,32 @@ export default function ClassDetailsScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Image Carousel */}
         <View style={styles.carouselContainer}>
-          <Image 
-            source={carouselImages[currentImageIndex]}
-            style={styles.carouselImage}
-            resizeMode="cover"
-          />
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / width);
+              setCurrentImageIndex(index);
+            }}
+            style={styles.carouselScrollView}
+          >
+            {carouselImages.map((image, index) => (
+              <Image 
+                key={index}
+                source={image}
+                style={styles.carouselImage}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
           {/* Carousel Dots */}
           <View style={styles.carouselDots}>
             {carouselImages.map((_, index) => (
-              <View
+              <Pressable
                 key={index}
+                onPress={() => handleDotPress(index)}
                 style={[
                   styles.dot,
                   index === currentImageIndex && styles.activeDot,
@@ -130,8 +165,9 @@ export default function ClassDetailsScreen() {
           {/* Category Tag */}
           <View style={styles.categoryTag}>
             <Image 
-              source={require('@/assets/images/hipHop.png')}
+              source={require('@/assets/images/hipHop2.png')}
               style={styles.categoryIcon}
+              resizeMode="contain"
             />
             <Text style={styles.categoryText}>{classData.category}</Text>
           </View>
@@ -180,21 +216,21 @@ export default function ClassDetailsScreen() {
             </View>
             <View style={styles.scheduleItem}>
               <Image 
-                source={require('@/assets/images/instructor.png')}
+                source={require('@/assets/images/niche.png')}
                 style={styles.scheduleIcon}
               />
               <Text style={styles.scheduleText}>{classData.schedule.instructor}</Text>
             </View>
             <View style={styles.scheduleItem}>
               <Image 
-                source={require('@/assets/images/calender.png')}
+                source={require('@/assets/images/weather.png')}
                 style={styles.scheduleIcon}
               />
               <Text style={styles.scheduleText}>{classData.schedule.day}</Text>
             </View>
             <View style={styles.scheduleItem}>
               <Image 
-                source={require('@/assets/images/clock.png')}
+                source={require('@/assets/images/time.png')}
                 style={styles.scheduleIcon}
               />
               <Text style={styles.scheduleText}>{classData.schedule.time}</Text>
@@ -219,42 +255,64 @@ export default function ClassDetailsScreen() {
               />
               <View style={styles.instructorInfo}>
                 <View style={styles.instructorNameRow}>
-                  <Text style={styles.instructorName}>{classData.instructor.name}</Text>
-                  <Image 
-                    source={require('@/assets/images/availability.png')}
-                    style={styles.verifiedIcon}
-                  />
+                  <View style={styles.nameAndVerification}>
+                    <Text style={styles.instructorName}>{classData.instructor.name}</Text>
+                    <Image 
+                      source={require('@/assets/images/verify.png')}
+                      style={styles.verifiedIcon}
+                    />
+                  </View>
+                  <Pressable style={styles.chatButton}>
+                    <Image 
+                      source={require('@/assets/images/message.png')}
+                      style={styles.chatIcon}
+                    />
+                  </Pressable>
                 </View>
                 <View style={styles.instructorDetails}>
                   <Image 
-                    source={require('@/assets/images/calender.png')}
+                    source={require('@/assets/images/calendar.png')}
                     style={styles.instructorDetailIcon}
                   />
                   <Text style={styles.instructorDetailText}>Joined in {classData.instructor.joinedYear}</Text>
-                </View>
-                <View style={styles.instructorDetails}>
-                  <Image 
-                    source={require('@/assets/images/instructor.png')}
-                    style={styles.instructorDetailIcon}
-                  />
-                  <Text style={styles.instructorDetailText}>{classData.instructor.experience}</Text>
-                </View>
-              </View>
-              <View style={styles.instructorActions}>
-                <Pressable style={styles.chatButton}>
-                  <Image 
-                    source={require('@/assets/images/message.png')}
-                    style={styles.chatIcon}
-                  />
-                </Pressable>
-                <View style={styles.instructorRating}>
-                  <Text style={styles.instructorRatingText}>{classData.instructor.rating}</Text>
-                  <Star width={12} height={12} />
+                  <View style={styles.instructorRating}>
+                    <Text style={styles.instructorRatingText}>{classData.instructor.rating}</Text>
+                    <Star width={16} height={16} />
+                  </View>
                 </View>
               </View>
             </View>
-            <Text style={styles.instructorBio}>{classData.instructor.bio}</Text>
-            <Text style={styles.showMore}>Show more</Text>
+            <View style={styles.instructorSkills}>
+              <View style={styles.skillItem}>
+                <Image 
+                  source={require('@/assets/images/menu-board.png')}
+                  style={styles.skillIcon}
+                />
+                <Text style={styles.skillText}>Hip-Hop</Text>
+              </View>
+              <View style={styles.skillItem}>
+                <Image 
+                  source={require('@/assets/images/availability.png')}
+                  style={styles.skillIcon}
+                />
+                <Text style={styles.skillText}>{classData.instructor.experience}</Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.instructorBio}>
+                I'm Annie Bens, your dedicated concierge. I specialize in curating unforgettable experiences just for you. Whether it's travel, dining, or entertainment, I'm your gateway to luxury and leisure. Let's elevate your lifestyle together, where exceptional service meets your desires.
+                {isBioExpanded && (
+                  <Text>
+                  With over 5 years of experience in the hospitality industry, I've helped hundreds of clients create memorable moments that last a lifetime. My expertise spans across luxury travel planning, exclusive dining reservations, and personalized entertainment experiences. I believe that every client deserves nothing but the best, and I'm committed to delivering excellence in every interaction.{'\n\n'}My approach is simple yet effective: I listen to your needs, understand your preferences, and craft bespoke experiences that exceed your expectations. From intimate dinner parties to grand celebrations, from weekend getaways to month-long adventures, I handle every detail with precision and care.{'\n\n'}When you work with me, you're not just getting a service – you're gaining a trusted partner who will go above and beyond to make your dreams a reality. Let's create something extraordinary together.
+                  </Text>
+                )}
+              </Text>
+              <Pressable onPress={handleBioToggle} style={styles.showMoreContainer}>
+                <Text style={styles.showMore}>
+                  {isBioExpanded ? 'Show less' : 'Show more'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -282,11 +340,13 @@ export default function ClassDetailsScreen() {
                   />
                   <View style={styles.reviewInfo}>
                     <Text style={styles.reviewName}>{review.name}</Text>
-                    <Text style={styles.reviewDate}>{review.date}</Text>
+                    <View style={{flexDirection:'row', alignItems:'center', gap: 4}}>
+                    <Text style={styles.reviewDate}>{review.rating}</Text>
+                    <Star width={16} height={16} /></View>
                   </View>
                   <View style={styles.reviewRating}>
-                    <Text style={styles.reviewRatingText}>{review.rating}</Text>
-                    <Star width={12} height={12} />
+                    <Text style={styles.reviewRatingText}>{review.date}</Text>
+                    
                   </View>
                 </View>
                 <Text style={styles.reviewComment}>{review.comment}</Text>
@@ -295,20 +355,19 @@ export default function ClassDetailsScreen() {
           </ScrollView>
         </View>
 
-        {/* Bottom Spacing for Fixed Bottom Bar */}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
-
-      {/* Fixed Bottom Bar */}
-      <View style={styles.bottomBar}>
-        <View style={styles.priceContainer}>
-          <Text style={styles.price}>{classData.price}</Text>
-          <Text style={styles.subscriptionStatus}>{classData.subscriptionStatus}</Text>
+        {/* Bottom Bar Section - Now inside ScrollView */}
+        <View style={styles.bottomBar}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.price}>{classData.price}</Text>
+            <Text style={styles.subscriptionStatus}>{classData.subscriptionStatus}</Text>
+          </View>
+          <Pressable onPress={handleBookPress}>
+            <GradientBackground style={styles.bookButton}>
+              <Text style={styles.bookButtonText}>Book</Text>
+            </GradientBackground>
+          </Pressable>
         </View>
-        <Pressable style={styles.bookButton} onPress={handleBookPress}>
-          <Text style={styles.bookButtonText}>Book</Text>
-        </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -317,12 +376,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingBottom: -40,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
+    
     paddingTop: 10,
     paddingBottom: 20,
     minHeight: 50,
@@ -359,8 +420,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 250,
   },
+  carouselScrollView: {
+    height: '100%',
+  },
   carouselImage: {
-    width: '100%',
+    width: width,
     height: '100%',
   },
   carouselDots: {
@@ -370,19 +434,22 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#C4C4C4',
+    backgroundColor: 'transparent',
   },
   activeDot: {
-    width: 12,
+    width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 0,
   },
   classOverview: {
     paddingHorizontal: 20,
@@ -391,24 +458,23 @@ const styles = StyleSheet.create({
   categoryTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8B5CF6',
-    borderRadius: 20,
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
+    borderWidth: 0.2,
+    borderColor: '#009F93',
     marginBottom: 12,
   },
   categoryIcon: {
-    width: 16,
-    height: 16,
+    width: 30,
+    height: 30,
     marginRight: 6,
   },
   categoryText: {
     fontSize: 12,
     fontFamily: Fonts.medium,
-    color: '#FFFFFF',
+    color: '#222222',
   },
   title: {
     fontSize: 24,
@@ -438,24 +504,25 @@ const styles = StyleSheet.create({
   locationTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(138, 83, 194, 0.03)',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
     gap: 4,
+    bottom:20,
+
   },
   locationIcon: {
-    width: 12,
-    height: 12,
+    width: 18,
+    height: 18,
   },
   locationText: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: Fonts.medium,
     color: '#8B5CF6',
   },
   section: {
     paddingHorizontal: 20,
-    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
@@ -472,11 +539,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   scheduleIcon: {
-    width: 16,
-    height: 16,
+    width: 30,
+    height: 30,
   },
   scheduleText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: Fonts.regular,
     color: '#000000',
   },
@@ -492,17 +559,18 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginBottom:20,
   },
   instructorHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   instructorAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 16,
   },
   instructorInfo: {
     flex: 1,
@@ -510,43 +578,68 @@ const styles = StyleSheet.create({
   instructorNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  nameAndVerification: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   instructorName: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: Fonts.bold,
     color: '#000000',
     marginRight: 8,
   },
   verifiedIcon: {
-    width: 16,
-    height: 16,
+    width: 20,
+    height: 20,
   },
   instructorDetails: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
+    gap: 8,
   },
   instructorDetailIcon: {
-    width: 14,
-    height: 14,
+    width: 16,
+    height: 16,
   },
   instructorDetailText: {
-    fontSize: 12,
+    fontSize: 14,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+    flex: 1,
+  },
+  instructorSkills: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  skillItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  skillIcon: {
+    width: 20,
+    height: 20,
+  },
+  skillText: {
+    fontSize: 14,
     fontFamily: Fonts.regular,
     color: '#666666',
   },
-  instructorActions: {
-    alignItems: 'flex-end',
-  },
   chatButton: {
-    padding: 8,
-    marginBottom: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chatIcon: {
-    width: 20,
-    height: 20,
+    width: 40,
+    height: 40,
+    
   },
   instructorRating: {
     flexDirection: 'row',
@@ -554,26 +647,32 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   instructorRatingText: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: Fonts.medium,
     color: '#000000',
   },
   instructorBio: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: Fonts.regular,
-    color: '#666666',
-    lineHeight: 16,
-    marginBottom: 8,
+    color: '#808B95',
+    lineHeight: 20,
+  },
+  underlinedText: {
+    textDecorationLine: 'underline',
+    color: '#0066CC',
+  },
+  showMoreContainer: {
   },
   showMore: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: Fonts.medium,
-    color: '#8B5CF6',
+    color: '#222222',
   },
   reviewsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+    justifyContent:'space-between',
     gap: 12,
   },
   reviewsRating: {
@@ -596,8 +695,6 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   reviewsScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
   },
   reviewCard: {
     backgroundColor: '#FFFFFF',
@@ -607,6 +704,7 @@ const styles = StyleSheet.create({
     width: width * 0.7,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginBottom: 12,
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -623,12 +721,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewName: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: Fonts.bold,
     color: '#000000',
   },
   reviewDate: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: Fonts.regular,
     color: '#666666',
   },
@@ -648,25 +746,20 @@ const styles = StyleSheet.create({
     color: '#666666',
     lineHeight: 16,
   },
-  bottomSpacing: {
-    height: 100,
-  },
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    marginBottom: 20,
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
   priceContainer: {
     flex: 1,
+    flexDirection:'row',
+    alignItems:'center',
   },
   price: {
     fontSize: 20,
@@ -678,16 +771,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Fonts.regular,
     color: '#666666',
+    marginLeft: 8,
   },
   bookButton: {
-    backgroundColor: '#8B5CF6',
     borderRadius: 25,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 15,
   },
   bookButtonText: {
     fontSize: 16,
-    fontFamily: Fonts.bold,
+fontWeight:'bold',
     color: '#FFFFFF',
   },
 });

@@ -11,7 +11,7 @@ export default function ClassesIndexScreen() {
   const router = useRouter();
 
   const handleClassPress = (classId: string) => {
-    router.push(`/home/${classId}`);
+    router.push(`/home/classDetails?id=${classId}`);
   };
 
   const handleSeeAllFeatured = () => {
