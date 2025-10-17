@@ -258,11 +258,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    shadowColor: '#000',
-    
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   inputIcon: {
     width: 20,
@@ -281,14 +276,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
     minHeight: 120,
   },
   textArea: {
@@ -302,14 +289,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
      borderColor: '#E0E0E0',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   fileItem: {
     flexDirection: 'row',
@@ -378,14 +357,6 @@ const styles = StyleSheet.create({
   submitButton: {
     borderRadius: 100,
     overflow: 'hidden',
-    shadowColor: '#C708F7',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   gradientButton: {
     paddingVertical: 16,

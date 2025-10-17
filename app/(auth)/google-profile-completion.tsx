@@ -4,7 +4,6 @@ import LoadingModal from '@/components/ui/loading-modal';
 import { Fonts, Icons } from '@/constants/theme';
 import { database } from '@/firebase.config';
 import { AuthService } from '@/services/authService';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { get, ref, set } from 'firebase/database';
 import { useEffect, useRef, useState } from 'react';
@@ -15,12 +14,19 @@ export default function GoogleProfileCompletionScreen() {
   console.log('🔍 Google Profile Completion Screen loaded');
   const router = useRouter();
   const [fullName, setFullName] = useState('');
-  const [isInstructor, setIsInstructor] = useState(false);
+  const [userType, setUserType] = useState<string>('');
+  const [showUserTypeDropdown, setShowUserTypeDropdown] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({
     fullName: '',
+    userType: '',
   });
+
+  const userTypeOptions = [
+    { id: 'dancer', name: 'Dancer' },
+    { id: 'instructor', name: 'Instructor' },
+  ];
   const scrollViewRef = useRef<ScrollView>(null);
   const fullNameRef = useRef<View>(null);
 
@@ -84,9 +90,20 @@ export default function GoogleProfileCompletionScreen() {
     setErrors({ ...errors, fullName: validateFullName(fullName) });
   };
 
+  const handleUserTypeSelect = (selectedType: string) => {
+    setUserType(selectedType);
+    setShowUserTypeDropdown(false);
+    setFocusedInput(null);
+    // Clear error when user selects a type
+    if (errors.userType) {
+      setErrors({ ...errors, userType: '' });
+    }
+  };
+
   const isFormValid = () => {
     const nameError = validateFullName(fullName);
-    return !nameError;
+    const userTypeError = !userType ? 'Please select a user type' : '';
+    return !nameError && !userTypeError;
   };
 
   // Debug function to clear user data
@@ -152,11 +169,12 @@ export default function GoogleProfileCompletionScreen() {
       await set(userRef, {
         ...existingData,
         fullName: fullName.trim(),
-        userType: isInstructor ? 'instructor' : 'dancer',
+        userType: userType,
+        email: user.email || null, // Save email if available
         lastSignIn: new Date().toISOString(),
       });
 
-      console.log('🔍 Profile completed successfully:', { uid: user.uid, fullName: fullName.trim(), userType: isInstructor ? 'instructor' : 'dancer' });
+      console.log('🔍 Profile completed successfully:', { uid: user.uid, fullName: fullName.trim(), userType: userType, email: user.email });
       
       // Navigate to terms screen
       console.log('🔍 Navigating to terms screen');
@@ -237,66 +255,61 @@ export default function GoogleProfileCompletionScreen() {
                   {/* User Type Selection */}
                   <View style={styles.fieldWrapper}>
                     <Text style={styles.inputLabel}>I am signing up as:</Text>
-                    <View style={styles.userTypeContainer}>
-                      {!isInstructor ? (
-                        <LinearGradient
-                          colors={['#F708F7', '#C708F7', '#F76B0B']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[styles.userTypeButton, styles.userTypeButtonActive]}
-                        >
                           <Pressable
-                            style={styles.userTypeButton}
-                            onPress={() => setIsInstructor(false)}
+                      style={[
+                        styles.inputField,
+                        focusedInput === 'userType' && styles.inputFieldFocused,
+                        errors.userType && styles.inputFieldError
+                      ]}
+                      onPress={() => {
+                        setFocusedInput('userType');
+                        setShowUserTypeDropdown(!showUserTypeDropdown);
+                      }}
+                    >
+                      <View style={styles.inputIcon}>
+                        <Icons.Name width={24} height={24} />
+                      </View>
+                            <Text style={[
+                        styles.input, 
+                        userType ? styles.selectedText : styles.placeholderText
+                            ]}>
+                        {userType ? userTypeOptions.find(option => option.id === userType)?.name : 'Select type'}
+                            </Text>
+                      <View style={styles.dropdownIcon}>
+                        <Text style={[
+                          styles.dropdownIconText,
+                          showUserTypeDropdown && styles.dropdownIconRotated
+                        ]}>▼</Text>
+                      </View>
+                          </Pressable>
+                    {errors.userType ? <Text style={styles.errorText}>{errors.userType}</Text> : null}
+                    
+                    {/* Dropdown Options */}
+                    {showUserTypeDropdown && (
+                      <TouchableWithoutFeedback onPress={() => setShowUserTypeDropdown(false)}>
+                        <View style={styles.dropdownOverlay}>
+                          <View style={styles.dropdownContainer}>
+                            {userTypeOptions.map((option, index) => (
+                        <Pressable
+                                key={index}
+                                style={[
+                                  styles.dropdownItem,
+                                  userType === option.id && styles.dropdownItemSelected
+                                ]}
+                                onPress={() => handleUserTypeSelect(option.id)}
                           >
                             <Text style={[
-                              styles.userTypeText,
-                              styles.userTypeTextActive
+                                  styles.dropdownItemText,
+                                  userType === option.id && styles.dropdownItemTextSelected
                             ]}>
-                              Dancer
+                                  {option.name}
                             </Text>
                           </Pressable>
-                        </LinearGradient>
-                      ) : (
-                        <Pressable
-                          style={styles.userTypeButton}
-                          onPress={() => setIsInstructor(false)}
-                        >
-                          <Text style={styles.userTypeText}>
-                            Dancer
-                          </Text>
-                        </Pressable>
-                      )}
-                      {isInstructor ? (
-                        <LinearGradient
-                          colors={['#F708F7', '#C708F7', '#F76B0B']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={[styles.userTypeButton, styles.userTypeButtonActive]}
-                        >
-                          <Pressable
-                            style={styles.userTypeButton}
-                            onPress={() => setIsInstructor(true)}
-                          >
-                            <Text style={[
-                              styles.userTypeText,
-                              styles.userTypeTextActive
-                            ]}>
-                              Instructor
-                            </Text>
-                          </Pressable>
-                        </LinearGradient>
-                      ) : (
-                        <Pressable
-                          style={styles.userTypeButton}
-                          onPress={() => setIsInstructor(true)}
-                        >
-                          <Text style={styles.userTypeText}>
-                            Instructor
-                          </Text>
-                        </Pressable>
-                      )}
-                    </View>
+                            ))}
+                          </View>
+                        </View>
+                      </TouchableWithoutFeedback>
+                    )}
                   </View>
                 </View>
               </View>
@@ -352,14 +365,6 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     height: 56,
     paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   inputFieldFocused: {
     borderWidth: 1,
@@ -389,37 +394,62 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     color: '#000000',
   },
-  userTypeContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 100,
-    marginTop: 8,
+  selectedText: {
+    color: '#000000',
   },
-  userTypeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 19,
-    borderRadius: 96,
-    alignItems: 'center',
+  placeholderText: {
+    color: '#999999',
+  },
+  dropdownIcon: {
+    width: 24,
+    height: 24,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  userTypeButtonActive: {
-    shadowColor: '#F708F7',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  userTypeText: {
-    fontSize: 16,
-    fontFamily: Fonts.semiBold,
+  dropdownIconText: {
+    fontSize: 12,
     color: '#666666',
+    transform: [{ rotate: '0deg' }],
   },
-  userTypeTextActive: {
-    color: '#FFFFFF',
+  dropdownIconRotated: {
+    transform: [{ rotate: '180deg' }],
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    zIndex: 1001,
+  },
+  dropdownItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#F3F4F6',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    fontFamily: Fonts.regular,
+    color: '#000000',
+  },
+  dropdownItemTextSelected: {
+    fontFamily: Fonts.semiBold,
+    color: '#8A53C2',
   },
   footer: {
     alignItems: 'center',

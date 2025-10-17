@@ -46,14 +46,6 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 30,
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
   },
   gradient: {
     flex: 1,

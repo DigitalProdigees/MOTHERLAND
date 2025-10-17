@@ -628,9 +628,14 @@ export default function SignInScreen() {
             onPress={handleSignIn}
             disabled={!isFormValid() || isLoading}
           />
-          <Text style={footerStyles.section2FooterText}>
-            Don't have an account? <Pressable onPress={handleSignUp}><Text style={footerStyles.signUpText}>Sign Up</Text></Pressable>
-          </Text>
+          <View style={footerStyles.section2FooterContainer}>
+            <Text style={footerStyles.section2FooterText}>
+              Don't have an account?{' '}
+            </Text>
+            <Pressable onPress={handleSignUp}>
+              <Text style={footerStyles.signUpText}>Sign Up</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -660,14 +665,6 @@ const section1Styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   optionContent: {
     flexDirection: 'row',
@@ -747,14 +744,6 @@ const section2Styles = StyleSheet.create({
     borderRadius: 100,
     height: 56,
     paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   inputFieldFocused: {
     borderWidth: 1,
@@ -853,25 +842,30 @@ const footerStyles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 32,
     paddingTop: 20,
+    paddingBottom: 40,
   },
   section1FooterText: {
     fontSize: 16,
     fontFamily: Fonts.semiBold,
     color: '#000000',
     marginBottom: 20,
+    textAlign: 'center',
+  },
+  section2FooterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
   },
   section2FooterText: {
     fontSize: 16,
     fontFamily: Fonts.regular,
     color: '#000000',
-    marginTop: 10,
-    textAlign: 'center',
   },
   signUpText: {
     color: '#F708F7',
     fontFamily: Fonts.bold,
     fontSize: 16,
-    top: 4,
   },
 });
 

@@ -1,5 +1,6 @@
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -156,7 +157,7 @@ export default function OnboardingScreen() {
                 end={{ x: 1.2, y: 0 }}
                 style={styles.nextButtonGradient}
               >
-                <Text style={styles.nextButtonIcon}>→</Text>
+                <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
               </LinearGradient>
             </Pressable>
           </View>
@@ -256,14 +257,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#808B95',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   backButtonIcon: {
     width: 24,
@@ -280,14 +273,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    shadowColor: '#F708F7',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   nextButtonGradient: {
     width: 56,
@@ -295,11 +280,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  nextButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontFamily: Fonts.bold,
   },
   swipeHint: {
     alignItems: 'center',

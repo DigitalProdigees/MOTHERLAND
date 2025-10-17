@@ -921,14 +921,6 @@ const section1Styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   optionContent: {
     flexDirection: 'row',
@@ -1007,14 +999,6 @@ const section2Styles = StyleSheet.create({
     borderRadius: 100,
     height: 56,
     paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   inputFieldFocused: {
     borderWidth: 1,
@@ -1138,14 +1122,6 @@ const section2Styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
     zIndex: 1000,
   },
   dropdownItem: {
