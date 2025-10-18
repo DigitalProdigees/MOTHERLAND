@@ -32,7 +32,7 @@ export default function PrivacyPolicyScreen() {
         
         // Route based on user type
         if (userType === 'instructor') {
-          router.replace('/(onboarding)/instructor-profile');
+          router.replace('/(auth)/instructor-subscription');
         } else {
           router.replace('/(onboarding)/profile-info');
         }
