@@ -66,10 +66,10 @@ export default function HomeIndexScreen() {
     // Add navigation logic for different menu items
     switch (menuItem) {
       case 'My Favourites':
-        router.push('/favourites');
+        router.push('/settings/favourites');
         break;
       case 'My Bookings':
-        router.push('/my-bookings');
+        router.push('/settings/my-bookings');
         break;
       case 'Library':
         // Add navigation to library screen
@@ -81,22 +81,22 @@ export default function HomeIndexScreen() {
         // Add navigation to products screen
         break;
       case 'My Post':
-        // Add navigation to my posts screen
+        router.push('/settings/my-post');
         break;
       case 'Subscriptions':
-        router.push('/my-subscriptions');
+        router.push('/settings/my-subscriptions');
         break;
       case 'Change Password':
-        router.push('/change-password');
+        router.push('/settings/change-password');
         break;
       case 'Contact Us':
-        router.push('/contact-us');
+        router.push('/settings/contact-us');
         break;
       case 'Terms of services':
-        // Add navigation to terms screen
+        router.push('/settings/terms-conditions');
         break;
       case 'Privacy Policy':
-        // Add navigation to privacy policy screen
+        router.push('/settings/privacy-policy');
         break;
       default:
         break;

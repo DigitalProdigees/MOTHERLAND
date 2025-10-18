@@ -1,6 +1,6 @@
+import GradientBackground from '@/components/ui/gradient-background';
 import SuccessPopup from '@/components/ui/success-popup';
 import { Fonts } from '@/constants/theme';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -17,31 +17,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
-const ChangePassword: React.FC = () => {
+const ResetPassword: React.FC = () => {
   const router = useRouter();
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
   const handleBack = () => {
     router.back();
   };
 
-  const handleSave = () => {
-    // Handle password change
-    console.log('Password change submitted:', { confirmPassword, newPassword, confirmNewPassword });
+  const handleSavePassword = () => {
+    // Handle password reset
+    console.log('Password reset submitted:', { newPassword, confirmPassword });
     setShowSuccess(true);
-  };
-
-  const handleForgotPassword = () => {
-    router.push('/forgot-password');
   };
 
   useEffect(() => {
     if (showSuccess) {
       const timer = setTimeout(() => {
-        router.replace('/(home)/home');
+        router.replace('/(instructor)/home');
       }, 2000);
 
       return () => clearTimeout(timer);
@@ -53,7 +48,7 @@ const ChangePassword: React.FC = () => {
       {/* Success Popup */}
       <SuccessPopup
         visible={showSuccess}
-        title="Your new password is saved!"
+        title="Your New Password Is Changed"
         iconSize={130}
       />
 
@@ -66,35 +61,29 @@ const ChangePassword: React.FC = () => {
             resizeMode="contain"
           />
         </Pressable>
-        <View style={styles.titleContainer}>
-          <Text style={styles.headerTitle}>Change Password</Text>
-        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Confirm Your Password Field */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Confirm Your Password</Text>
-          <View style={styles.inputContainer}>
-            <Image
-              source={require('@/assets/images/lock1.png')}
-              style={styles.inputIcon}
-              resizeMode="contain"
-            />
-            <TextInput
-              style={styles.textInput}
-              placeholder="Confirm your password"
-              placeholderTextColor="#999999"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-          </View>
+        {/* Reset Icon */}
+        <View style={styles.iconContainer}>
+          <Image
+            source={require('@/assets/images/reset.png')}
+            style={styles.resetIcon}
+            resizeMode="contain"
+          />
         </View>
 
-        {/* Create New Password Field */}
+        {/* Title */}
+        <Text style={styles.title}>Reset Password</Text>
+
+        {/* Subtitle */}
+        <Text style={styles.subtitle}>
+          Please make sure the password match!
+        </Text>
+
+        {/* New Password Field */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Create New Password</Text>
+          <Text style={styles.fieldLabel}>New Password</Text>
           <View style={styles.inputContainer}>
             <Image
               source={require('@/assets/images/lock1.png')}
@@ -103,8 +92,8 @@ const ChangePassword: React.FC = () => {
             />
             <TextInput
               style={styles.textInput}
-              placeholder="Create new password"
-              placeholderTextColor="#999999"
+              placeholder="New Password"
+              placeholderTextColor="#AAAAAA"
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
@@ -123,34 +112,22 @@ const ChangePassword: React.FC = () => {
             />
             <TextInput
               style={styles.textInput}
-              placeholder="Confirm new password"
-              placeholderTextColor="#999999"
-              value={confirmNewPassword}
-              onChangeText={setConfirmNewPassword}
+              placeholder="Confirm New Password"
+              placeholderTextColor="#AAAAAA"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
               secureTextEntry
             />
           </View>
         </View>
-
-        {/* Forgot Password Link */}
-        <View style={styles.forgotPasswordContainer}>
-          <Pressable onPress={handleForgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       {/* Save Button */}
-      <View style={styles.saveContainer}>
-        <Pressable style={styles.saveButton} onPress={handleSave}>
-          <LinearGradient
-            colors={['#F708F7', '#C708F7', '#F76B0B']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradientButton}
-          >
-            <Text style={styles.saveButtonText}>Save</Text>
-          </LinearGradient>
+      <View style={styles.buttonContainer}>
+        <Pressable style={styles.saveButton} onPress={handleSavePassword}>
+          <GradientBackground style={styles.gradientButton}>
+            <Text style={styles.saveButtonText}>Save New Password</Text>
+          </GradientBackground>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -163,77 +140,86 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    minHeight: 80,
+    paddingTop: 8,
   },
   backButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  titleContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
+    padding: 8,
   },
   backIcon: {
     width: 24,
     height: 24,
   },
-  headerTitle: {
-    fontSize: 24,
-fontWeight: 'bold',    color: '#000000',
-marginTop:30,
-  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
   },
+  iconContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  resetIcon: {
+    width: 120,
+    height: 120,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: Fonts.bold,
+    color: '#333333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: Fonts.regular,
+    color: '#AAAAAA',
+    textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 22,
+  },
   fieldContainer: {
-    marginBottom: 10,
+    marginBottom: 24,
   },
   fieldLabel: {
     fontSize: 16,
     fontFamily: Fonts.bold,
-    color: '#000000',
+    color: '#333333',
     marginBottom: 12,
-    marginTop: 10,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(138, 83, 193, 0.03)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 17,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   inputIcon: {
     width: 20,
     height: 20,
     marginRight: 12,
+    tintColor: '#8A2BE2',
   },
   textInput: {
     flex: 1,
     fontSize: 16,
     fontFamily: Fonts.regular,
-    color: '#000000',
+    color: '#333333',
   },
-  forgotPasswordContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  forgotPasswordText: {
-    fontSize: 16,
-    fontFamily: Fonts.medium,
-    color: '#000000',
-  },
-  saveContainer: {
+  buttonContainer: {
     paddingHorizontal: 20,
     paddingVertical: 20,
     paddingBottom: 30,
@@ -241,6 +227,14 @@ marginTop:30,
   saveButton: {
     borderRadius: 100,
     overflow: 'hidden',
+    shadowColor: '#8A2BE2',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   gradientButton: {
     paddingVertical: 16,
@@ -254,4 +248,4 @@ marginTop:30,
   },
 });
 
-export default ChangePassword;
+export default ResetPassword;
