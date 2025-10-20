@@ -18,18 +18,18 @@ export default function OnboardingScreen() {
   // Carousel data
   const carouselData = [
     {
-      title: 'Discover Amazing Music',
-      subtitle: 'Explore a world of authentic sounds and discover your next favorite artist.',
+      title: 'Find Your Rhythm',
+      subtitle: 'Explore dance classes from top instructors in every style, from Hip Hop to Salsa.',
       imageSource: require('@/assets/images/carousal1.png'),
     },
     {
-      title: 'Connect & Share',
-      subtitle: 'Join a community of music lovers and share your favorite tracks.',
+      title: 'Dance with the Best',
+      subtitle: 'Join top instructors who guide and inspire you, from beginner to pro.',
       imageSource: require('@/assets/images/carousal2.png'),
     },
     {
-      title: 'Start Your Journey',
-      subtitle: 'Create your account and dive into the world of Motherland Jams',
+      title: 'Join the Movement',
+      subtitle: 'Become part of a global dance community, share, grow, and groove together.',
       imageSource: require('@/assets/images/carousal3.png'),
     },
   ];
