@@ -1,11 +1,9 @@
 import AppHeader from '@/components/ui/app-header';
 import CategoriesSection from '@/components/ui/categories-section';
-import Drawer from '@/components/ui/drawer';
 import FeaturedClassesSection from '@/components/ui/featured-classes-section';
 import GradientBackground from '@/components/ui/gradient-background';
 import SearchBar from '@/components/ui/search-bar';
 import StreetDanceSection from '@/components/ui/street-dance-section';
-import { useDrawer } from '@/contexts/DrawerContext';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StatusBar, StyleSheet } from 'react-native';
@@ -13,11 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeIndexScreen() {
   const router = useRouter();
-  const { isDrawerOpen, setIsDrawerOpen } = useDrawer();
-
-  const handleMenuPress = () => {
-    setIsDrawerOpen(true);
-  };
+  
+  const handleMenuPress = undefined; // AppHeader opens drawer via navigation
 
   const handleAddPress = () => {
     console.log('Add pressed');
@@ -55,13 +50,8 @@ export default function HomeIndexScreen() {
     router.push(`/home/classDetails?id=${classId}`);
   };
 
-  const handleDrawerClose = () => {
-    setIsDrawerOpen(false);
-  };
-
   const handleDrawerMenuPress = (menuItem: string) => {
     console.log('Drawer menu pressed:', menuItem);
-    setIsDrawerOpen(false);
     
     // Add navigation logic for different menu items
     switch (menuItem) {
@@ -105,7 +95,6 @@ export default function HomeIndexScreen() {
 
   const handleLogout = () => {
     console.log('Logout pressed');
-    setIsDrawerOpen(false);
     // Add logout logic here
   };
 
@@ -116,8 +105,10 @@ export default function HomeIndexScreen() {
         
         <ScrollView 
           style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
         >
           <AppHeader
             onMenuPress={handleMenuPress}
@@ -146,12 +137,7 @@ export default function HomeIndexScreen() {
           />
         </ScrollView>
         
-        <Drawer
-          isOpen={isDrawerOpen}
-          onClose={handleDrawerClose}
-          onMenuPress={handleDrawerMenuPress}
-          onLogout={handleLogout}
-        />
+        {/* Drawer handled globally in (home)/_layout via navigator */}
       </SafeAreaView>
     </GradientBackground>
   );
@@ -160,12 +146,12 @@ export default function HomeIndexScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    paddingBottom: -40,
+    paddingBottom: 0,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 0,
+    paddingBottom: 120,
   },
 });

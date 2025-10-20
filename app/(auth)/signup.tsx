@@ -1151,6 +1151,7 @@ const footerStyles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 32,
     paddingTop: 20,
+    paddingBottom: 40,
   },
   section1FooterText: {
     fontSize: 16,

@@ -57,6 +57,8 @@ export default function InstructorProfileScreen() {
     { id: 'contemporary', name: 'Contemporary' },
     { id: 'tap', name: 'Tap Dance' },
     { id: 'jazz', name: 'Jazz Dance' },
+    { id: 'belly', name: 'Belly Dance' },
+
   ];
 
   // Sample data for modals

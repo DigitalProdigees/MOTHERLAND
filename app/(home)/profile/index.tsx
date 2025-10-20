@@ -12,16 +12,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 interface UserProfile {
   fullName: string;
   email: string;
-  profileImageUri: string;
+  profilePicture: string;
+  profileImageUri?: string; // Keep for backward compatibility
   country: string;
   state: string;
   city: string;
+  userType: string;
+  provider: string;
+  lastSignIn: string;
+  profileCompleted: boolean;
+  profileCompletedAt: string;
+  uid: string;
 }
 
 export default function ProfileIndexScreen() {
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch user profile data
   useEffect(() => {
@@ -31,11 +39,23 @@ export default function ProfileIndexScreen() {
       const unsubscribe = onValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
+          console.log('🔍 Profile data loaded:', data);
+          console.log('🔍 Full Name:', data.fullName);
+          console.log('🔍 Email:', data.email);
+          console.log('🔍 City:', data.city);
+          console.log('🔍 State:', data.state);
+          console.log('🔍 Country:', data.country);
+          console.log('🔍 User Type:', data.userType);
           setUserProfile(data);
+        } else {
+          console.log('🔍 No profile data found in database');
         }
+        setIsLoading(false);
       });
 
       return () => unsubscribe();
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
@@ -67,6 +87,18 @@ export default function ProfileIndexScreen() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <GradientBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading profile...</Text>
+          </View>
+        </SafeAreaView>
+      </GradientBackground>
+    );
+  }
+
   return (
     <GradientBackground>
       <SafeAreaView style={styles.safeArea}>
@@ -74,9 +106,9 @@ export default function ProfileIndexScreen() {
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.profileImageContainer}>
-              {userProfile?.profileImageUri ? (
+              {(userProfile?.profilePicture || userProfile?.profileImageUri) ? (
                 <Image 
-                  source={{ uri: userProfile.profileImageUri }} 
+                  source={{ uri: userProfile.profilePicture || userProfile.profileImageUri }} 
                   style={styles.profileImage}
                   resizeMode="cover"
                 />
@@ -88,20 +120,47 @@ export default function ProfileIndexScreen() {
             </View>
             
             <Text style={styles.profileName}>
-              {userProfile?.fullName || 'User Name'}
+              {userProfile?.fullName || 'No name set'}
             </Text>
             
             <Text style={styles.profileEmail}>
-              {userProfile?.email || 'user@example.com'}
+              {userProfile?.email || 'No email set'}
             </Text>
             
-            {(userProfile?.city || userProfile?.state || userProfile?.country) && (
-              <Text style={styles.profileLocation}>
-                {[userProfile?.city, userProfile?.state, userProfile?.country]
-                  .filter(Boolean)
-                  .join(', ')}
+            {/* Location - Show even if some fields are missing */}
+            <Text style={styles.profileLocation}>
+              {userProfile?.city && userProfile?.state && userProfile?.country
+                ? `${userProfile.city}, ${userProfile.state}, ${userProfile.country}`
+                : userProfile?.city && userProfile?.state
+                ? `${userProfile.city}, ${userProfile.state}`
+                : userProfile?.city
+                ? userProfile.city
+                : userProfile?.state
+                ? userProfile.state
+                : userProfile?.country
+                ? userProfile.country
+                : 'Location not set'
+              }
+            </Text>
+
+            {/* User Type Badge */}
+            {userProfile?.userType && (
+              <View style={styles.userTypeBadge}>
+                <Text style={styles.userTypeText}>
+                  {userProfile.userType.charAt(0).toUpperCase() + userProfile.userType.slice(1)}
+                </Text>
+              </View>
+            )}
+
+            {/* Provider Info */}
+            {userProfile?.provider && (
+              <Text style={styles.profileProvider}>
+                Signed in with {userProfile.provider === 'google.com' ? 'Google' : userProfile.provider}
               </Text>
             )}
+
+            {/* Debug Info - Remove this in production */}
+            
           </View>
 
           {/* Profile Actions */}
@@ -178,10 +237,55 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     opacity: 0.8,
+    marginBottom: 12,
+  },
+  userTypeBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  userTypeText: {
+    fontSize: 12,
+    fontFamily: Fonts.semiBold,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  profileProvider: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    opacity: 0.7,
   },
   profileActions: {
     paddingHorizontal: 32,
     paddingBottom: 100, // Extra padding for tab bar
     alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: Fonts.regular,
+    color: '#FFFFFF',
+    opacity: 0.8,
+  },
+  debugContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  debugText: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#FFFFFF',
+    opacity: 0.8,
+    marginBottom: 2,
   },
 });

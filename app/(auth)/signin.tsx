@@ -145,12 +145,9 @@ export default function SignInScreen() {
             // User exists in database, update their data and navigate to home
             console.log('🔍 Google Sign-In - Existing user detected, updating data and getting user type');
             
-            // Update user data for existing users
-            await AuthService.saveUserToDatabase(result.user, {
-              fullName: 'Google User', // Will be updated with actual name if available
-              email: result.user.email || '',
-              profilePicture: '',
-            });
+            // For existing users, we don't need to update their data
+            // The user data is already saved in the database from their initial signup
+            console.log('🔍 Google Sign-In - Existing user, using saved data from database');
             
             const userType = await AuthService.getUserType(result.user.uid);
             console.log('🔍 Google Sign-In - User type:', userType);
@@ -200,15 +197,9 @@ export default function SignInScreen() {
           console.log('🍎 Apple Sign-In - User exists in database:', userExists);
           
           if (userExists) {
-            // User exists in database, update their data and navigate to home
-            console.log('🍎 Apple Sign-In - Existing user detected, updating data and getting user type');
-            
-            // Update user data for existing users
-            await AuthService.saveUserToDatabase(result.user, {
-              fullName: 'Apple User', // Will be updated with actual name if available
-              email: result.user.email || '',
-              profilePicture: '',
-            });
+            // User exists in database, we don't need to update their data
+            // The user data is already saved in the database from their initial signup
+            console.log('🍎 Apple Sign-In - Existing user detected, using saved data from database');
             
             const userType = await AuthService.getUserType(result.user.uid);
             console.log('🍎 Apple Sign-In - User type:', userType);

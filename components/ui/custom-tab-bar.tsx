@@ -1,12 +1,10 @@
 import { Fonts, Icons } from '@/constants/theme';
-import { useDrawer } from '@/contexts/DrawerContext';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { isDrawerOpen } = useDrawer();
   const currentRoute = state.routes[state.index].name;
   
   // Check if we're on a class details screen or class booking screen (nested under home tab)
@@ -15,10 +13,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const isClassBookingScreen = currentRoute === 'home' && nestedRoute === 'class-booking';
   const shouldUseGradientTabBar = isClassDetailsScreen || isClassBookingScreen;
   
-  // Hide tab bar when drawer is open
-  if (isDrawerOpen) {
-    return null;
-  }
+  // Drawer visibility is managed by navigator; no context dependency
   
   // Debug logging
   console.log('Tab Bar Debug:', { currentRoute, nestedRoute, isClassDetailsScreen, isClassBookingScreen, shouldUseGradientTabBar });
@@ -67,6 +62,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               : options.title !== undefined
               ? options.title
               : route.name;
+            const labelText = typeof label === 'string' ? label : route.name;
 
             const isFocused = state.index === index;
 
@@ -98,7 +94,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 accessibilityRole="button"
                 accessibilityState={isFocused ? { selected: true } : {}}
                 accessibilityLabel={options.tabBarAccessibilityLabel}
-                testID={options.tabBarTestID}
                 onPress={onPress}
                 onLongPress={onLongPress}
                 style={styles.tabButton}
@@ -121,7 +116,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                   )}
                 </View>
                 <Text style={[styles.tabLabel, { color: labelColor }]}>
-                  {label}
+                  {labelText}
                 </Text>
               </Pressable>
             );
@@ -140,6 +135,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
             : options.title !== undefined
             ? options.title
             : route.name;
+          const labelText = typeof label === 'string' ? label : route.name;
 
           const isFocused = state.index === index;
 
@@ -171,7 +167,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel}
-              testID={options.tabBarTestID}
               onPress={onPress}
               onLongPress={onLongPress}
               style={styles.tabButton}
@@ -191,7 +186,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 )}
               </View>
               <Text style={[styles.tabLabel, { color: labelColor }]}>
-                {label}
+                {labelText}
               </Text>
             </Pressable>
           );

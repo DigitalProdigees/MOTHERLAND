@@ -2,20 +2,20 @@ import { Fonts } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    Dimensions,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import Animated, {
-  interpolate,
-  interpolateColor,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
+    interpolate,
+    interpolateColor,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -119,16 +119,6 @@ const Drawer: React.FC<DrawerProps> = ({
       <Pressable style={styles.overlayPressable} onPress={handleOverlayPress} />
       <Animated.View style={[styles.drawer, drawerAnimatedStyle]}>
         <SafeAreaView style={styles.container}>
-          {/* Header with close button */}
-          <View style={styles.header}>
-            <Pressable style={styles.closeButton} onPress={onClose}>
-              <Image
-                source={require('@/assets/images/closs.png')}
-                style={styles.closeIcon}
-                resizeMode="contain"
-              />
-            </Pressable>
-          </View>
 
           {/* User Profile Section - Fixed at top */}
           <LinearGradient
@@ -239,25 +229,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-    alignItems: 'flex-start',
-  },
-  closeButton: {
-    padding: 8,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeIcon: {
-    width: 32,
-    height: 32,
-  },
+  // header removed (no close icon)
   content: {
     flex: 1,
   },

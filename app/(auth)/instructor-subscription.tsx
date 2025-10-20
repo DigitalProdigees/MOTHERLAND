@@ -73,8 +73,13 @@ export default function InstructorSubscriptionScreen() {
         style={styles.subscriptionCard}
         onPress={() => handleSubscriptionSelect(option.id)}
       >
+        {(() => {
+          const gradientColors = (isSelected
+            ? (option.gradient ?? ['#F708F7', '#C708F7', '#F76B0B'])
+            : ['rgba(247, 8, 247, 0.03)', 'rgba(95, 1, 95, 0.03)']) as [string, string, ...string[]];
+          return (
         <LinearGradient
-          colors={isSelected ? option.gradient || ['#F708F7', '#C708F7', '#F76B0B'] : ['rgba(247, 8, 247, 0.03)', 'rgba(95, 1, 95, 0.03)']}
+          colors={gradientColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardGradient}
@@ -101,6 +106,8 @@ export default function InstructorSubscriptionScreen() {
             </Text>
           </View>
         </LinearGradient>
+          );
+        })()}
       </Pressable>
     );
   };
@@ -150,7 +157,7 @@ export default function InstructorSubscriptionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFFFFF',
     paddingBottom:-40,
   },
   header: {
@@ -186,14 +193,6 @@ const styles = StyleSheet.create({
   subscriptionCard: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
   },
   cardGradient: {
     paddingVertical: 24,

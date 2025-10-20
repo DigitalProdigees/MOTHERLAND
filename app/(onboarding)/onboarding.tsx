@@ -29,7 +29,7 @@ export default function OnboardingScreen() {
     },
     {
       title: 'Start Your Journey',
-      subtitle: 'Create your account and dive into the world of MotherLand Jams',
+      subtitle: 'Create your account and dive into the world of Motherland Jams',
       imageSource: require('@/assets/images/carousal3.png'),
     },
   ];

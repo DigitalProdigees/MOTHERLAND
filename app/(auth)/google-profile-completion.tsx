@@ -48,6 +48,9 @@ export default function GoogleProfileCompletionScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+
+    // Note: We don't pre-fill the name from Google data
+    // Users should enter their preferred name during profile completion
   }, []);
 
   const scrollToInput = (inputRef: React.RefObject<View | null>) => {
@@ -455,7 +458,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 32,
-    paddingTop: 20,
+    paddingVertical: 20,
   },
   debugButton: {
     marginTop: 10,

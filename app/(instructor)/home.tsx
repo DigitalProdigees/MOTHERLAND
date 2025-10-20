@@ -1,7 +1,6 @@
-import InstructorDrawer from '@/components/ui/instructor-drawer';
-import { Fonts, Icons } from '@/constants/theme';
-import { useInstructorDrawer } from '@/contexts/InstructorDrawerContext';
+import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { onValue, ref } from 'firebase/database';
@@ -25,7 +24,7 @@ interface InstructorProfile {
 
 export default function InstructorHomeScreen() {
   const router = useRouter();
-  const { isInstructorDrawerOpen, setIsInstructorDrawerOpen } = useInstructorDrawer();
+  const navigation = useNavigation<any>();
   const [instructorProfile, setInstructorProfile] = useState<InstructorProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('classes');
@@ -91,16 +90,15 @@ export default function InstructorHomeScreen() {
   };
 
   const handleMenuPress = () => {
-    setIsInstructorDrawerOpen(true);
+    if (typeof navigation.openDrawer === 'function') {
+      navigation.openDrawer();
+    }
   };
 
-  const handleDrawerClose = () => {
-    setIsInstructorDrawerOpen(false);
-  };
+  // Drawer handled by (instructor)/_layout
 
   const handleDrawerMenuPress = (menuItem: string) => {
     console.log('Drawer menu pressed:', menuItem);
-    setIsInstructorDrawerOpen(false);
     
     // Add navigation logic for different menu items
     switch (menuItem) {
@@ -153,7 +151,6 @@ export default function InstructorHomeScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: async () => {
         try {
-          setIsInstructorDrawerOpen(false);
           await auth.signOut();
           router.replace('/(auth)/signin');
         } catch (error) {
@@ -243,7 +240,13 @@ export default function InstructorHomeScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
+      >
         {/* Add a new class section */}
         <View style={styles.addClassSection}>
           <Pressable style={styles.addClassButton} onPress={handleCreateClass}>
@@ -498,62 +501,9 @@ export default function InstructorHomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <LinearGradient
-        colors={['#F708F7', '#C708F7', '#F76B0B']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.bottomNavigation}
-      >
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('home')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Home width={24} height={24} color="#FFFFFF" />
-          </View>
-          <Text style={styles.tabLabel}>Home</Text>
-        </Pressable>
-        
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('classes')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Classes width={24} height={24} color="#FFFFFF" />
-            {activeTab === 'classes' && <View style={styles.activeIndicator} />}
-          </View>
-          <Text style={styles.tabLabel}>Classes</Text>
-        </Pressable>
-        
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('community')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Community width={24} height={24} color="#FFFFFF" />
-          </View>
-          <Text style={styles.tabLabel}>Community</Text>
-        </Pressable>
-        
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('profile')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Profile width={24} height={24} color="#FFFFFF" />
-      </View>
-          <Text style={styles.tabLabel}>Profile</Text>
-        </Pressable>
-      </LinearGradient>
+      {/* Bottom Navigation moved to Tab Navigator; removed here */}
 
-      {/* Instructor Drawer */}
-      <InstructorDrawer
-        isOpen={isInstructorDrawerOpen}
-        onClose={handleDrawerClose}
-        onMenuPress={handleDrawerMenuPress}
-        onLogout={handleLogout}
-      />
+      {/* Drawer provided by navigator */}
     </SafeAreaView>
   );
 }
@@ -562,7 +512,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingBottom:-40
+    paddingBottom: 0
   },
   loadingContainer: {
     flex: 1,
@@ -603,7 +553,6 @@ const styles = StyleSheet.create({
   },
   // Content styles
   content: {
-    flex: 1,
     paddingHorizontal: 20,
   },
   // Add class section
@@ -947,6 +896,10 @@ fontWeight:'bold',    color: '#FF0000',
   },
   // Bottom navigation - matching custom tab bar
   bottomNavigation: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     height: 80,
     paddingBottom: 20,
     paddingTop: 10,

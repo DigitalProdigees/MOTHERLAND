@@ -1,4 +1,5 @@
 import { Icons } from '@/constants/theme';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -15,6 +16,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onSearchPress,
   onNotificationPress,
 }) => {
+  const navigation = useNavigation<any>();
+  const openDrawer = () => {
+    if (typeof navigation.openDrawer === 'function') {
+      navigation.openDrawer();
+    }
+  };
   return (
     <View style={styles.container}>
       <Pressable
@@ -22,7 +29,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           styles.iconButton,
           { opacity: pressed ? 0.7 : 1 }
         ]}
-        onPress={onMenuPress}
+        onPress={onMenuPress ?? openDrawer}
       >
         <Icons.Drawer 
           width={30} 

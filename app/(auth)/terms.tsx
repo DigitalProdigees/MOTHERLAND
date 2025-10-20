@@ -31,37 +31,37 @@ export default function TermsScreen() {
       >
         <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
         <Text style={styles.paragraph}>
-          By accessing and using MotherLand Jams, you accept and agree to be bound by the terms and provision of this agreement.
+          By accessing and using Motherland Jams, you accept and agree to be bound by the terms and provision of this agreement.
         </Text>
 
         <Text style={styles.sectionTitle}>2. Use License</Text>
         <Text style={styles.paragraph}>
-          Permission is granted to temporarily download one copy of the materials on MotherLand Jams for personal, non-commercial transitory viewing only.
+          Permission is granted to temporarily download one copy of the materials on Motherland Jams for personal, non-commercial transitory viewing only.
         </Text>
 
         <Text style={styles.sectionTitle}>3. Disclaimer</Text>
         <Text style={styles.paragraph}>
-          The materials on MotherLand Jams are provided on an 'as is' basis. MotherLand Jams makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+          The materials on Motherland Jams are provided on an 'as is' basis. Motherland Jams makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
         </Text>
 
         <Text style={styles.sectionTitle}>4. Limitations</Text>
         <Text style={styles.paragraph}>
-          In no event shall MotherLand Jams or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on MotherLand Jams.
+          In no event shall Motherland Jams or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Motherland Jams.
         </Text>
 
         <Text style={styles.sectionTitle}>5. Accuracy of Materials</Text>
         <Text style={styles.paragraph}>
-          The materials appearing on MotherLand Jams could include technical, typographical, or photographic errors. MotherLand Jams does not warrant that any of the materials on its website are accurate, complete or current.
+          The materials appearing on Motherland Jams could include technical, typographical, or photographic errors. Motherland Jams does not warrant that any of the materials on its website are accurate, complete or current.
         </Text>
 
         <Text style={styles.sectionTitle}>6. Links</Text>
         <Text style={styles.paragraph}>
-          MotherLand Jams has not reviewed all of the sites linked to its app and is not responsible for the contents of any such linked site.
+          Motherland Jams has not reviewed all of the sites linked to its app and is not responsible for the contents of any such linked site.
         </Text>
 
         <Text style={styles.sectionTitle}>7. Modifications</Text>
         <Text style={styles.paragraph}>
-          MotherLand Jams may revise these terms of service at any time without notice. By using this app you are agreeing to be bound by the then current version of these terms of service.
+          Motherland Jams may revise these terms of service at any time without notice. By using this app you are agreeing to be bound by the then current version of these terms of service.
         </Text>
 
         <Text style={styles.sectionTitle}>8. Governing Law</Text>
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 24,
-    paddingBottom: 0,
+    paddingBottom: 20,
   },
 });
 

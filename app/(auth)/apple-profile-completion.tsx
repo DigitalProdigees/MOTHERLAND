@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 32,
-    paddingTop: 20,
+    paddingVertical: 20,
   },
   debugButton: {
     marginTop: 10,

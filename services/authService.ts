@@ -2,10 +2,10 @@ import { auth, database } from '@/firebase.config';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import {
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInWithCredential,
-  User
+    GoogleAuthProvider,
+    OAuthProvider,
+    signInWithCredential,
+    User
 } from 'firebase/auth';
 import { get, ref, set } from 'firebase/database';
 import { Platform } from 'react-native';
@@ -17,6 +17,7 @@ GoogleSignin.configure({
   offlineAccess: true,
   hostedDomain: '',
   forceCodeForRefreshToken: true,
+  scopes: ['https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
 });
 
 // Configure WebBrowser for better integration
@@ -39,10 +40,22 @@ export class AuthService {
       // Check if your device supports Google Play
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       
+      // Sign out any existing Google user first to ensure clean state
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        // Ignore sign out errors
+        console.log('Google sign out before sign in:', signOutError);
+      }
+      
       // Get the users ID token
       const signInResult = await GoogleSignin.signIn();
       const idToken = signInResult.data?.idToken;
       const googleUser = signInResult.data?.user;
+      
+      if (!idToken) {
+        throw new Error('No ID token received from Google Sign-In');
+      }
       
       // Create a Google credential with the token
       const googleCredential = GoogleAuthProvider.credential(idToken);
@@ -68,12 +81,22 @@ export class AuthService {
       
       // Handle user cancellation
       if (error.code === 'SIGN_IN_CANCELLED' || 
+          error.code === 'SIGN_IN_CANCELLED' ||
           error.message?.includes('canceled') || 
           error.message?.includes('cancelled') ||
-          error.message?.includes('User cancelled')) {
+          error.message?.includes('User cancelled') ||
+          error.message?.includes('The user canceled')) {
         return {
           success: false,
           error: 'Sign-in was cancelled by user',
+        };
+      }
+      
+      // Handle specific Firebase auth errors
+      if (error.code === 'auth/argument-error') {
+        return {
+          success: false,
+          error: 'Invalid authentication configuration. Please check your Google Sign-In setup.',
         };
       }
       
@@ -289,6 +312,23 @@ export class AuthService {
       return userType;
     } catch (error) {
       console.log('🍎 Error getting user type:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get user data from database
+   */
+  static async getUserDataFromDatabase(uid: string): Promise<any | null> {
+    try {
+      console.log('🔍 Getting user data for UID:', uid);
+      const userRef = ref(database, `users/${uid}/personalInfo`);
+      const snapshot = await get(userRef);
+      const userData = snapshot.val();
+      console.log('🔍 User data from database:', userData);
+      return userData;
+    } catch (error) {
+      console.log('🔍 Error getting user data:', error);
       return null;
     }
   }

@@ -73,17 +73,17 @@ export default function PrivacyPolicyScreen() {
 
         <Text style={styles.sectionTitle}>2. How We Use Your Information</Text>
         <Text style={styles.paragraph}>
-          We use the information we collect to provide, maintain, and improve our services, to develop new services, and to protect MotherLand Jams and our users. We also use this information to offer you customized content.
+          We use the information we collect to provide, maintain, and improve our services, to develop new services, and to protect Motherland Jams and our users. We also use this information to offer you customized content.
         </Text>
 
         <Text style={styles.sectionTitle}>3. Information Sharing and Disclosure</Text>
         <Text style={styles.paragraph}>
-          We do not share your personal information with companies, organizations, or individuals outside of MotherLand Jams except in the following cases: with your consent, for external processing, or for legal reasons.
+          We do not share your personal information with companies, organizations, or individuals outside of Motherland Jams except in the following cases: with your consent, for external processing, or for legal reasons.
         </Text>
 
         <Text style={styles.sectionTitle}>4. Data Security</Text>
         <Text style={styles.paragraph}>
-          We work hard to protect MotherLand Jams and our users from unauthorized access to or unauthorized alteration, disclosure, or destruction of information we hold. We encrypt many of our services using SSL and review our information collection, storage, and processing practices.
+          We work hard to protect Motherland Jams and our users from unauthorized access to or unauthorized alteration, disclosure, or destruction of information we hold. We encrypt many of our services using SSL and review our information collection, storage, and processing practices.
         </Text>
 
         <Text style={styles.sectionTitle}>5. Data Retention</Text>
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 24,
-    paddingBottom: 0,
+    paddingBottom: 20,
   },
 });
 

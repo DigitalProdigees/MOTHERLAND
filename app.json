@@ -11,19 +11,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.motherlandjames.app",
-      // COMMENTED OUT FOR EXPO GO COMPATIBILITY
-      // "googleServicesFile": "./GoogleService-Info.plist",
-      // "usesAppleSignIn": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to take profile pictures.",
         "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select profile pictures.",
-        // COMMENTED OUT FOR EXPO GO COMPATIBILITY
-        // "CFBundleURLTypes": [
-        //   {
-        //     "CFBundleURLName": "com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29",
-        //     "CFBundleURLSchemes": ["com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29"]
-        //   }
-        // ]
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29",
+            "CFBundleURLSchemes": ["com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29"]
+          }
+        ]
       }
     },
     "android": {
@@ -70,13 +68,12 @@
           "cameraPermission": "The app accesses your camera to let you take photos."
         }
       ],
-      // COMMENTED OUT FOR EXPO GO COMPATIBILITY
-      // [
-      //   "@react-native-google-signin/google-signin",
-      //   {
-      //     "iosUrlScheme": "com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29"
-      //   }
-      // ]
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
