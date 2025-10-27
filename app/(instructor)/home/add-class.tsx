@@ -1,11 +1,14 @@
-import InstructorDrawer from '@/components/ui/instructor-drawer';
-import { Fonts, Icons } from '@/constants/theme';
-import { useInstructorDrawer } from '@/contexts/InstructorDrawerContext';
-import { auth } from '@/firebase.config';
+import { Fonts } from '@/constants/theme';
+import { auth, database, storage } from '@/firebase.config';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { get, push, ref, remove, set } from 'firebase/database';
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { useState } from 'react';
-import { Alert, Dimensions, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Dimensions, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -97,26 +100,35 @@ const nonSubscriberPrices: DropdownOption[] = [
 
 export default function AddClassScreen() {
   const router = useRouter();
-  const { isInstructorDrawerOpen, setIsInstructorDrawerOpen } = useInstructorDrawer();
+  const navigation = useNavigation();
+  const route = useRoute();
+  const params = route.params as any;
+  const isEditMode = params?.editMode === 'true';
+  const listingId = params?.listingId as string;
+  const listingStatus = params?.status as string;
+  const isDraftStatus = listingStatus === 'draft';
+  
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: '',
-    classType: '',
-    difficulty: '',
-    subscriberPrice: '',
-    nonSubscriberPrice: '',
-    date: '',
-    time: '',
-    location: '',
+    title: params?.title as string || '',
+    description: params?.description as string || '',
+    availableSeats: params?.availableSeats as string || '',
+    category: params?.category as string || '',
+    classType: params?.classType as string || '',
+    difficulty: params?.difficulty as string || '',
+    subscriberPrice: params?.subscriberPrice as string || '$',
+    nonSubscriberPrice: params?.nonSubscriberPrice as string || '$',
+    date: params?.date as string || '',
+    time: params?.time as string || '',
+    location: params?.location as string || '',
   });
+
+  const [selectedImage, setSelectedImage] = useState<string | null>(params?.imageUrl as string || null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [showDropdowns, setShowDropdowns] = useState({
     category: false,
     classType: false,
     difficulty: false,
-    subscriberPrice: false,
-    nonSubscriberPrice: false,
     date: false,
     time: false,
     location: false,
@@ -125,9 +137,24 @@ export default function AddClassScreen() {
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [requirementsModalVisible, setRequirementsModalVisible] = useState(false);
   const [cancellationModalVisible, setCancellationModalVisible] = useState(false);
+  const [datePickerModalVisible, setDatePickerModalVisible] = useState(false);
+  const [timePickerModalVisible, setTimePickerModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState(new Date());
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePriceChange = (field: string, value: string) => {
+    // Always ensure the value starts with '$'
+    if (!value.startsWith('$')) {
+      value = '$' + value.replace(/\$/g, '');
+    }
+    // Remove any non-numeric characters except the first '$'
+    const numericPart = value.slice(1).replace(/[^0-9]/g, '');
+    const formattedValue = '$' + numericPart;
+    setFormData(prev => ({ ...prev, [field]: formattedValue }));
   };
 
   const handleDropdownSelect = (field: string, option: DropdownOption) => {
@@ -139,112 +166,288 @@ export default function AddClassScreen() {
     setShowDropdowns(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
-  const handleImageUpload = () => {
-    Alert.alert('Image Upload', 'Image upload functionality will be implemented soon!');
+  const handleImageUpload = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant permission to access your photos.');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setSelectedImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
   };
 
-  const handlePreview = () => {
-    Alert.alert('Preview', 'Preview functionality will be implemented soon!');
+  const uploadImageToStorage = async (imageUri: string): Promise<string> => {
+    try {
+      setIsUploadingImage(true);
+  
+      // Convert image URI to blob
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+  
+      // Create a unique filename
+      const user = auth.currentUser;
+      const filename = `listings/${user?.uid}/${Date.now()}.jpg`;
+      const imageRef = storageRef(storage, filename);
+  
+      // Upload blob to Firebase Storage
+      await uploadBytes(imageRef, blob);
+  
+      // Get download URL
+      const downloadURL = await getDownloadURL(imageRef);
+  
+      setIsUploadingImage(false);
+      return downloadURL;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setIsUploadingImage(false);
+      throw error;
+    }
+  };
+  
+
+  const handleSaveDraft = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in to save a draft.');
+        return;
+      }
+
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.category || !formData.availableSeats) {
+        Alert.alert('Error', 'Please fill in all required fields (Title, Description, Category, Available Seats).');
+        return;
+      }
+
+      // Upload image if selected
+      let imageUrl = selectedImage || 'placeholder';
+      if (selectedImage && !selectedImage.startsWith('http')) {
+        try {
+          imageUrl = await uploadImageToStorage(selectedImage);
+        } catch (error) {
+          Alert.alert('Warning', 'Failed to upload image. Saving without image.');
+          imageUrl = 'placeholder';
+        }
+      }
+
+      // Fetch instructor's full name from their profile
+      const instructorProfileRef = ref(database, `users/${user.uid}/personalInfo`);
+      const instructorSnapshot = await get(instructorProfileRef);
+      const instructorProfile = instructorSnapshot.val();
+      const instructorFullName = instructorProfile?.fullName || user.displayName || 'Instructor';
+
+      // Create listing data
+      const listingData = {
+        title: formData.title,
+        description: formData.description,
+        availableSeats: parseInt(formData.availableSeats) || 0,
+        category: formData.category,
+        classType: formData.classType,
+        difficulty: formData.difficulty,
+        subscriberPrice: formData.subscriberPrice,
+        nonSubscriberPrice: formData.nonSubscriberPrice,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location,
+        status: 'draft',
+        createdAt: new Date().toISOString(),
+        instructorId: user.uid,
+        instructorName: instructorFullName,
+        imageUrl: imageUrl,
+        rating: 0,
+        subscribers: 0,
+        reviewCount: 0,
+        availability: parseInt(formData.availableSeats) || 0, // Use availableSeats value
+      };
+
+      if (isEditMode && listingId && isDraftStatus) {
+        // EDIT MODE: Update existing draft
+        const draftRef = ref(database, `users/${user.uid}/draftListing/${listingId}`);
+        await set(draftRef, listingData);
+        Alert.alert('Success', 'Draft updated successfully!');
+      } else {
+        // CREATE MODE: Create new draft
+        const draftRef = ref(database, `users/${user.uid}/draftListing`);
+        const newDraftRef = push(draftRef);
+        await set(newDraftRef, listingData);
+        Alert.alert('Success', 'Class saved as draft successfully!');
+      }
+
+      router.back();
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      Alert.alert('Error', 'Failed to save draft. Please try again.');
+    }
   };
 
-  const handleSaveDraft = () => {
-    Alert.alert('Save Draft', 'Class saved as draft successfully!');
-  };
+  const handlePublish = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in to publish a class.');
+        return;
+      }
 
-  const handlePublish = () => {
-    Alert.alert('Publish', 'Class published successfully!');
-    router.back();
-  };
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.category || !formData.availableSeats) {
+        Alert.alert('Error', 'Please fill in all required fields (Title, Description, Category, Available Seats).');
+        return;
+      }
 
-  const handleMenuPress = () => {
-    setIsInstructorDrawerOpen(true);
-  };
+      // Upload image if selected
+      let imageUrl = selectedImage || 'placeholder';
+      if (selectedImage && !selectedImage.startsWith('http')) {
+        try {
+          imageUrl = await uploadImageToStorage(selectedImage);
+        } catch (error) {
+          Alert.alert('Warning', 'Failed to upload image. Publishing without image.');
+          imageUrl = 'placeholder';
+        }
+      }
 
-  const handleDrawerClose = () => {
-    setIsInstructorDrawerOpen(false);
-  };
+      // Fetch instructor's full name from their profile
+      const instructorProfileRef = ref(database, `users/${user.uid}/personalInfo`);
+      const instructorSnapshot = await get(instructorProfileRef);
+      const instructorProfile = instructorSnapshot.val();
+      const instructorFullName = instructorProfile?.fullName || user.displayName || 'Instructor';
 
-  const handleDrawerMenuPress = (menuItem: string) => {
-    console.log('Drawer menu pressed:', menuItem);
-    setIsInstructorDrawerOpen(false);
-    
-    // Add navigation logic for different menu items
-    switch (menuItem) {
-      case 'My Classes':
-        router.push('/(instructor)/home');
-        break;
-      case 'Add New Class':
-        router.push('/(instructor)/add-class');
-        break;
-      case 'Class Analytics':
-        // Add navigation to analytics screen
-        break;
-      case 'My Students':
-        // Add navigation to students screen
-        break;
-      case 'Switch as Student':
-        router.push('/(home)/home');
-        break;
-      case 'My Earnings':
-        // Add navigation to earnings screen
-        break;
-      case 'Payment Settings':
-        // Add navigation to payment settings screen
-        break;
-      case 'My Favourites':
-        router.push('/ins-settings/favourites');
-        break;
-      case 'Subscriptions':
-        router.push('/ins-settings/my-subscriptions');
-        break;
-      case 'Change Password':
-        router.push('/ins-settings/change-password');
-        break;
-      case 'Contact Us':
-        router.push('/ins-settings/contact-us');
-        break;
-      case 'Terms of services':
-        router.push('/ins-settings/terms-conditions');
-        break;
-      case 'Privacy Policy':
-        router.push('/ins-settings/privacy-policy');
-        break;
-      default:
-        break;
+      // Create listing data
+      const listingData = {
+        title: formData.title,
+        description: formData.description,
+        availableSeats: parseInt(formData.availableSeats) || 0,
+        category: formData.category,
+        classType: formData.classType,
+        difficulty: formData.difficulty,
+        subscriberPrice: formData.subscriberPrice,
+        nonSubscriberPrice: formData.nonSubscriberPrice,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        instructorId: user.uid,
+        instructorName: instructorFullName,
+        imageUrl: imageUrl,
+        rating: 0,
+        subscribers: 0,
+        reviewCount: 0,
+        availability: parseInt(formData.availableSeats) || 0, // Use availableSeats value
+      };
+
+      if (isEditMode && listingId && isDraftStatus) {
+        // EDIT MODE: Publishing a draft - move from draft to published
+        // First, check if draft exists
+        const draftRef = ref(database, `users/${user.uid}/draftListing/${listingId}`);
+        const draftSnapshot = await get(draftRef);
+        
+        if (draftSnapshot.exists()) {
+          // Create new listing in user's published listings
+          const userListingsRef = ref(database, `users/${user.uid}/Listings`);
+          const newUserListingRef = push(userListingsRef);
+          await set(newUserListingRef, listingData);
+
+          // Create global listing
+          const globalListingsRef = ref(database, 'Listings');
+          const newGlobalListingRef = push(globalListingsRef);
+          const globalListingData = {
+            ...listingData,
+            listingId: newGlobalListingRef.key,
+            userListingId: newUserListingRef.key,
+          };
+          await set(newGlobalListingRef, globalListingData);
+          
+          // Update user's listing with global listing ID
+          await set(ref(database, `users/${user.uid}/Listings/${newUserListingRef.key}/listingId`), newGlobalListingRef.key);
+
+          // Delete the draft
+          await remove(draftRef);
+
+          Alert.alert('Success', 'Draft published successfully and submitted for admin approval!');
+        } else {
+          Alert.alert('Error', 'Draft not found.');
+        }
+      } else if (isEditMode && listingId && !isDraftStatus) {
+        // EDIT MODE: Update existing published listing
+        const userListingRef = ref(database, `users/${user.uid}/Listings/${listingId}`);
+        const userListingSnapshot = await get(userListingRef);
+        
+        if (userListingSnapshot.exists()) {
+          const existingData = userListingSnapshot.val();
+          const globalListingId = existingData.listingId;
+          
+          // Update user's listing
+          await set(userListingRef, {
+            ...listingData,
+            listingId: globalListingId, // Keep the existing global listing ID
+          });
+          
+          // Update global listing if it exists
+          if (globalListingId) {
+            const globalListingRef = ref(database, `Listings/${globalListingId}`);
+            await set(globalListingRef, {
+              ...listingData,
+              listingId: globalListingId,
+              userListingId: listingId,
+            });
+            console.log(`Updated global listing: ${globalListingId}`);
+          }
+          
+          Alert.alert('Success', 'Class updated successfully!');
+        } else {
+          Alert.alert('Error', 'Class not found for editing.');
+        }
+      } else {
+        // CREATE MODE: Create new listing
+        // Save to user's personal published listings
+        const userListingsRef = ref(database, `users/${user.uid}/Listings`);
+        const newUserListingRef = push(userListingsRef);
+        await set(newUserListingRef, listingData);
+
+        // Save to global Listings node for all users to see
+        const globalListingsRef = ref(database, 'Listings');
+        const newGlobalListingRef = push(globalListingsRef);
+        const globalListingData = {
+          ...listingData,
+          listingId: newGlobalListingRef.key, // Store the global listing ID
+          userListingId: newUserListingRef.key, // Store the user's listing ID
+        };
+        await set(newGlobalListingRef, globalListingData);
+        
+        // Also update the user's listing with the global listing ID for reference
+        await set(ref(database, `users/${user.uid}/Listings/${newUserListingRef.key}/listingId`), newGlobalListingRef.key);
+
+        Alert.alert('Success', 'Class submitted for admin approval!');
+      }
+      
+      router.back();
+    } catch (error) {
+      console.error('Error publishing class:', error);
+      Alert.alert('Error', 'Failed to publish class. Please try again.');
     }
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: async () => {
-        try {
-          setIsInstructorDrawerOpen(false);
-          await auth.signOut();
-          router.replace('/(auth)/signin');
-        } catch (error) {
-          console.log('Error signing out:', error);
-          Alert.alert('Error', 'Failed to logout. Please try again.');
-        }
-      }}
-    ]);
+    // Logout handled by main instructor layout drawer
   };
 
-  const handleAddPress = () => {
-    console.log('Add pressed');
-  };
-
-  const handleSearchPress = () => {
-    console.log('Search pressed');
-  };
-
-  const handleNotificationPress = () => {
-    console.log('Notification pressed');
-  };
-
-  const handleTabPress = (tabName: string) => {
-    console.log('Tab pressed:', tabName);
-  };
 
   const handleBookingOptionPress = (option: string) => {
     switch (option) {
@@ -270,6 +473,53 @@ export default function AddClassScreen() {
 
   const closeCancellationModal = () => {
     setCancellationModalVisible(false);
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setDatePickerModalVisible(false);
+    }
+    if (selectedDate) {
+      setSelectedDate(selectedDate);
+      const formattedDate = selectedDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      setFormData(prev => ({ ...prev, date: formattedDate }));
+    }
+  };
+
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
+    if (Platform.OS === 'android') {
+      setTimePickerModalVisible(false);
+    }
+    if (selectedTime) {
+      setSelectedTime(selectedTime);
+      const formattedTime = selectedTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      setFormData(prev => ({ ...prev, time: formattedTime }));
+    }
+  };
+
+  const openDatePicker = () => {
+    setDatePickerModalVisible(true);
+  };
+
+  const openTimePicker = () => {
+    setTimePickerModalVisible(true);
+  };
+
+  const closeDatePicker = () => {
+    setDatePickerModalVisible(false);
+  };
+
+  const closeTimePicker = () => {
+    setTimePickerModalVisible(false);
   };
 
   const renderDropdown = (field: keyof typeof showDropdowns, options: DropdownOption[], placeholder: string) => (
@@ -307,62 +557,47 @@ export default function AddClassScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Pressable style={styles.menuButton} onPress={handleMenuPress}>
-            <Image
-              source={require('@/assets/images/insDrawer.png')}
-              style={styles.menuIcon}
-              resizeMode="contain"
-            />
-          </Pressable>
-          <View style={styles.headerRight}>
-            <Pressable style={styles.headerIcon} onPress={handleAddPress}>
-              <Image
-                source={require('@/assets/images/insAdd.png')}
-                style={styles.headerIconImage}
-                resizeMode="contain"
-              />
-            </Pressable>
-            <Pressable style={styles.headerIcon} onPress={handleSearchPress}>
-              <Image
-                source={require('@/assets/images/insSearch.png')}
-                style={styles.headerIconImage}
-                resizeMode="contain"
-              />
-            </Pressable>
-            <Pressable style={styles.headerIcon} onPress={handleNotificationPress}>
-              <Image
-                source={require('@/assets/images/insBell.png')}
-                style={styles.headerIconImage}
-                resizeMode="contain"
-              />
-            </Pressable>
-          </View>
-        </View>
-        <View style={styles.headerBottom}>
-          <Text style={styles.headerTitle}>Class information</Text>
-          <Pressable style={styles.previewButton} onPress={handlePreview}>
-            <LinearGradient
-              colors={['#F708F7', '#C708F7', '#F76B0B']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.previewButtonGradient}
-            >
-              <Text style={styles.previewButtonText}>Preview</Text>
-            </LinearGradient>
-          </Pressable>
-        </View>
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Image
+            source={require('@/assets/images/chevron-left.png')}
+            style={styles.backIcon}
+            resizeMode="contain"
+          />
+        </Pressable>
+        <Text style={styles.headerTitle}>Add Class</Text>
+        <View style={styles.headerPlaceholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Image Upload Section */}
-        <Pressable style={styles.imageUploadContainer} onPress={handleImageUpload}>
-          <Image
-            source={require('@/assets/images/upload1.png')}
-            style={styles.uploadIcon}
-            resizeMode="contain"
-          />
-          <Text style={styles.uploadText}>Upload an image</Text>
+        <Pressable 
+          style={[styles.imageUploadContainer, selectedImage && styles.imageUploadContainerWithImage]} 
+          onPress={handleImageUpload}
+          disabled={isUploadingImage}
+        >
+          {selectedImage ? (
+            <>
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.uploadedImage}
+                resizeMode="cover"
+              />
+              <View style={styles.changeImageOverlay}>
+                <Text style={styles.changeImageText}>Tap to change image</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <Image
+                source={require('@/assets/images/upload1.png')}
+                style={styles.uploadIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.uploadText}>
+                {isUploadingImage ? 'Uploading...' : 'Upload an image'}
+              </Text>
+            </>
+          )}
         </Pressable>
 
         {/* Class Information Form */}
@@ -394,6 +629,18 @@ export default function AddClassScreen() {
           </View>
 
           <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Available Seats</Text>
+            <TextInput
+              style={styles.textInput}
+              value={formData.availableSeats}
+              onChangeText={(value) => handleInputChange('availableSeats', value)}
+              placeholder="Enter number of available seats"
+              placeholderTextColor="#999999"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Select category</Text>
             {renderDropdown('category', categories, 'Select category')}
           </View>
@@ -410,22 +657,54 @@ export default function AddClassScreen() {
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Price per person (Discount for subscribers)</Text>
-            {renderDropdown('subscriberPrice', subscriberPrices, 'Price per person (Discount for subscribers)')}
+            <TextInput
+              style={styles.textInput}
+              value={formData.subscriberPrice}
+              onChangeText={(value) => handlePriceChange('subscriberPrice', value)}
+              placeholder="Enter price for subscribers (e.g., $10)"
+              placeholderTextColor="#999999"
+              keyboardType="numeric"
+            />
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Price per person (Non subscribers)</Text>
-            {renderDropdown('nonSubscriberPrice', nonSubscriberPrices, 'Price per person (Non subscribers)')}
+            <TextInput
+              style={styles.textInput}
+              value={formData.nonSubscriberPrice}
+              onChangeText={(value) => handlePriceChange('nonSubscriberPrice', value)}
+              placeholder="Enter price for non-subscribers (e.g., $20)"
+              placeholderTextColor="#999999"
+              keyboardType="numeric"
+            />
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Date</Text>
-            {renderDropdown('date', dates, 'Date')}
+            <Pressable style={styles.pickerButton} onPress={openDatePicker}>
+              <Text style={[styles.pickerButtonText, formData.date ? styles.pickerButtonTextSelected : styles.pickerButtonTextPlaceholder]}>
+                {formData.date || 'Select Date'}
+              </Text>
+              <Image
+                source={require('@/assets/images/chevron-left.png')}
+                style={styles.chevronIcon}
+                resizeMode="contain"
+              />
+            </Pressable>
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Time</Text>
-            {renderDropdown('time', times, 'Time')}
+            <Pressable style={styles.pickerButton} onPress={openTimePicker}>
+              <Text style={[styles.pickerButtonText, formData.time ? styles.pickerButtonTextSelected : styles.pickerButtonTextPlaceholder]}>
+                {formData.time || 'Select Time'}
+              </Text>
+              <Image
+                source={require('@/assets/images/chevron-left.png')}
+                style={styles.chevronIcon}
+                resizeMode="contain"
+              />
+            </Pressable>
           </View>
 
           <View style={styles.inputContainer}>
@@ -454,18 +733,20 @@ export default function AddClassScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <Pressable style={styles.saveDraftButton} onPress={handleSaveDraft}>
-            <LinearGradient
-              colors={['#F708F7', '#C708F7', '#F76B0B']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.saveDraftButtonGradient}
-            >
-              <View style={styles.saveDraftButtonInner}>
-                <Text style={styles.saveDraftButtonText}>Save & Draft</Text>
-              </View>
-            </LinearGradient>
-          </Pressable>
+          {(!isEditMode || (isEditMode && isDraftStatus)) && (
+            <Pressable style={styles.saveDraftButton} onPress={handleSaveDraft}>
+              <LinearGradient
+                colors={['#F708F7', '#C708F7', '#F76B0B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.saveDraftButtonGradient}
+              >
+                <View style={styles.saveDraftButtonInner}>
+                  <Text style={styles.saveDraftButtonText}>Save & Draft</Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
+          )}
           <Pressable style={styles.publishButton} onPress={handlePublish}>
             <LinearGradient
               colors={['#F708F7', '#C708F7', '#F76B0B']}
@@ -473,64 +754,18 @@ export default function AddClassScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.publishButtonGradient}
             >
-              <Text style={styles.publishButtonText}>Publish</Text>
+              <Text style={styles.publishButtonText}>
+                {isEditMode && isDraftStatus ? 'Publish' : isEditMode ? 'Update' : 'Publish'}
+              </Text>
             </LinearGradient>
           </Pressable>
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <LinearGradient
-        colors={['#F708F7', '#C708F7', '#F76B0B']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.bottomNavigation}
-      >
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('home')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Home width={24} height={24} color="#FFFFFF" />
-          </View>
-          <Text style={styles.tabLabel}>Home</Text>
-        </Pressable>
-        
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('classes')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Classes width={24} height={24} color="#FFFFFF" />
-            <View style={styles.activeIndicator} />
-          </View>
-          <Text style={styles.tabLabel}>Classes</Text>
-        </Pressable>
-        
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('community')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Community width={24} height={24} color="#FFFFFF" />
-          </View>
-          <Text style={styles.tabLabel}>Community</Text>
-        </Pressable>
-        
-        <Pressable 
-          style={styles.tabButton} 
-          onPress={() => handleTabPress('profile')}
-        >
-          <View style={styles.tabIconContainer}>
-            <Icons.Profile width={24} height={24} color="#FFFFFF" />
-          </View>
-          <Text style={styles.tabLabel}>Profile</Text>
-        </Pressable>
-      </LinearGradient>
 
       {/* Terms and Conditions Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={termsModalVisible}
         onRequestClose={closeTermsModal}
@@ -594,7 +829,7 @@ export default function AddClassScreen() {
 
       {/* Guest Requirements Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={requirementsModalVisible}
         onRequestClose={closeRequirementsModal}
@@ -660,7 +895,7 @@ export default function AddClassScreen() {
 
       {/* Cancellation Policy Modal */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={cancellationModalVisible}
         onRequestClose={closeCancellationModal}
@@ -727,13 +962,87 @@ export default function AddClassScreen() {
         </View>
       </Modal>
 
-      {/* Instructor Drawer */}
-      <InstructorDrawer
-        isOpen={isInstructorDrawerOpen}
-        onClose={handleDrawerClose}
-        onMenuPress={handleDrawerMenuPress}
-        onLogout={handleLogout}
-      />
+      {/* Date Picker Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={datePickerModalVisible}
+        onRequestClose={closeDatePicker}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerModalContainer}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Select Date</Text>
+              <Pressable style={styles.closeButton} onPress={closeDatePicker}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </Pressable>
+            </View>
+            <View style={styles.pickerModalContent}>
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+                minimumDate={new Date()}
+                style={styles.dateTimePicker}
+              />
+            </View>
+            <View style={styles.pickerModalFooter}>
+              <Pressable style={styles.pickerDoneButton} onPress={closeDatePicker}>
+                <LinearGradient
+                  colors={['#F708F7', '#C708F7', '#F76B0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pickerDoneButtonGradient}
+                >
+                  <Text style={styles.pickerDoneButtonText}>Done</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Time Picker Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={timePickerModalVisible}
+        onRequestClose={closeTimePicker}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerModalContainer}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Select Time</Text>
+              <Pressable style={styles.closeButton} onPress={closeTimePicker}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </Pressable>
+            </View>
+            <View style={styles.pickerModalContent}>
+              <DateTimePicker
+                value={selectedTime}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleTimeChange}
+                style={styles.dateTimePicker}
+              />
+            </View>
+            <View style={styles.pickerModalFooter}>
+              <Pressable style={styles.pickerDoneButton} onPress={closeTimePicker}>
+                <LinearGradient
+                  colors={['#F708F7', '#C708F7', '#F76B0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pickerDoneButtonGradient}
+                >
+                  <Text style={styles.pickerDoneButtonText}>Done</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -746,54 +1055,31 @@ const styles = StyleSheet.create({
   },
   // Header styles
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
   },
-  menuButton: {
-  },
-  menuIcon: {
+  backIcon: {
     width: 24,
     height: 24,
-  },
-  headerRight: {
-    flexDirection: 'row',
-  },
-  headerIcon: {
-    padding: 8,
-  },
-  headerIconImage: {
-    marginRight:-10,
-    width: 44,
-    height: 44,
-  },
-  headerBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    tintColor: '#000000',
   },
   headerTitle: {
     fontSize: 20,
     fontFamily: Fonts.bold,
     color: '#000000',
+    flex: 1,
+    textAlign: 'center',
   },
-  previewButton: {
-    borderRadius: 100,
-    overflow: 'hidden',
-  },
-  previewButtonGradient: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  previewButtonText: {
-    fontSize: 14,
-fontWeight:'bold',    color: '#FFFFFF',
+  headerPlaceholder: {
+    width: 40,
   },
   // Content styles
   content: {
@@ -811,6 +1097,29 @@ fontWeight:'bold',    color: '#FFFFFF',
     alignItems: 'center',
     backgroundColor: '#FAFAFA',
     marginVertical: 20,
+    overflow: 'hidden',
+  },
+  imageUploadContainerWithImage: {
+    borderStyle: 'solid',
+    borderColor: '#8A53C2',
+  },
+  uploadedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  changeImageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  changeImageText: {
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+    color: '#FFFFFF',
   },
   uploadIcon: {
     width: 50,
@@ -979,36 +1288,6 @@ fontWeight:'bold',    color: '#FFFFFF',
     fontSize: 16,
 fontWeight:'bold',    color: '#FFFFFF',
   },
-  // Bottom navigation styles
-  bottomNavigation: {
-    height: 80,
-    paddingBottom: 20,
-    paddingTop: 10,
-    flexDirection: 'row',
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabLabel: {
-    fontFamily: Fonts.medium,
-    fontSize: 12,
-    marginTop: 4,
-    color: '#FFFFFF',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: -8,
-    width: 20,
-    height: 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 1,
-  },
   // Modal styles
   modalOverlay: {
     flex: 1,
@@ -1083,5 +1362,82 @@ fontWeight:'bold',    color: '#FFFFFF',
     fontSize: 16,
     fontFamily: Fonts.bold,
     color: '#FFFFFF',
+  },
+  // Picker button styles
+  pickerButton: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  pickerButtonText: {
+    fontSize: 15,
+    fontFamily: Fonts.regular,
+  },
+  pickerButtonTextSelected: {
+    color: '#000000',
+  },
+  pickerButtonTextPlaceholder: {
+    color: '#999999',
+  },
+  // Picker modal styles
+  pickerModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    maxHeight: '60%',
+    width: width - 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontFamily: Fonts.bold,
+    color: '#000000',
+  },
+  pickerModalContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  pickerModalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopColor: '#E0E0E0',
+  },
+  pickerDoneButton: {
+    borderRadius: 100,
+    overflow: 'hidden',
+  },
+  pickerDoneButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  pickerDoneButtonText: {
+    fontSize: 16,
+    fontFamily: Fonts.bold,
+    color: '#FFFFFF',
+  },
+  dateTimePicker: {
+    width: '100%',
+    height: 200,
   },
 });

@@ -3,7 +3,6 @@ import Header from '@/components/ui/header';
 import LoadingModal from '@/components/ui/loading-modal';
 import { Fonts, Icons } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
-import { AuthService } from '@/services/authService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -129,110 +128,11 @@ export default function SignInScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const result = await AuthService.signInWithGoogle();
-      
-      if (result.success && result.user) {
-        console.log('Google Sign-In successful:', { uid: result.user.uid, email: result.user.email });
-        
-        // Check if user exists in our database (same logic as Apple Sign-In)
-        try {
-          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
-          console.log('🔍 Google Sign-In - User exists in database:', userExists);
-          
-          if (userExists) {
-            // User exists in database, update their data and navigate to home
-            console.log('🔍 Google Sign-In - Existing user detected, updating data and getting user type');
-            
-            // For existing users, we don't need to update their data
-            // The user data is already saved in the database from their initial signup
-            console.log('🔍 Google Sign-In - Existing user, using saved data from database');
-            
-            const userType = await AuthService.getUserType(result.user.uid);
-            console.log('🔍 Google Sign-In - User type:', userType);
-            
-            if (userType === 'instructor') {
-              router.replace('/(instructor)/home');
-            } else {
-              router.replace('/(home)/home');
-            }
-          } else {
-            // User doesn't exist in database, treat as new user
-            console.log('🔍 Google Sign-In - New user detected (no database record), navigating to profile completion');
-            router.push('/(auth)/google-profile-completion');
-          }
-        } catch (error) {
-          console.log('🔍 Google Sign-In - Error checking user existence, treating as new user:', error);
-          // If check fails, treat as new user
-          router.push('/(auth)/google-profile-completion');
-        }
-      } else {
-        // Don't show alert for user cancellation
-        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
-          console.log('Google Sign-In cancelled by user');
-        } else {
-          Alert.alert('Sign In Failed', result.error || 'Google Sign-In failed');
-        }
-      }
-    } catch (error: any) {
-      console.log('Google Sign-In error:', error);
-      Alert.alert('Sign In Failed', error.message || 'Google Sign-In failed');
-    } finally {
-      setIsLoading(false);
-    }
+    Alert.alert('Not Available', 'Google Sign-In is not available in Expo Go. Please use email/password authentication.');
   };
 
   const handleAppleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const result = await AuthService.signInWithApple();
-      
-      if (result.success && result.user) {
-        console.log('Apple Sign-In successful:', { uid: result.user.uid, email: result.user.email });
-        
-        // Check if user exists in our database (same logic as Apple Sign-Up)
-        try {
-          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
-          console.log('🍎 Apple Sign-In - User exists in database:', userExists);
-          
-          if (userExists) {
-            // User exists in database, we don't need to update their data
-            // The user data is already saved in the database from their initial signup
-            console.log('🍎 Apple Sign-In - Existing user detected, using saved data from database');
-            
-            const userType = await AuthService.getUserType(result.user.uid);
-            console.log('🍎 Apple Sign-In - User type:', userType);
-            
-            if (userType === 'instructor') {
-              router.replace('/(instructor)/home');
-            } else {
-              router.replace('/(home)/home');
-            }
-          } else {
-            // User doesn't exist in database, treat as new user
-            console.log('🍎 Apple Sign-In - New user detected (no database record), navigating to profile completion');
-            router.push('/(auth)/apple-profile-completion');
-          }
-        } catch (error) {
-          console.log('🍎 Apple Sign-In - Error checking user existence, treating as new user:', error);
-          // If check fails, treat as new user
-          router.push('/(auth)/apple-profile-completion');
-        }
-      } else {
-        // Don't show alert for user cancellation
-        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
-          console.log('Apple Sign-In cancelled by user');
-        } else {
-          Alert.alert('Sign In Failed', result.error || 'Apple Sign-In failed');
-        }
-      }
-    } catch (error: any) {
-      console.log('Apple Sign-In error:', error);
-      Alert.alert('Sign In Failed', error.message || 'Apple Sign-In failed');
-    } finally {
-      setIsLoading(false);
-    }
+    Alert.alert('Not Available', 'Apple Sign-In is not available in Expo Go. Please use email/password authentication.');
   };
 
   const handleBack = () => {
@@ -264,14 +164,21 @@ export default function SignInScreen() {
         const snapshot = await get(userRef);
         const userType = snapshot.val();
         
-        if (userType === 'instructor') {
+        console.log('User type from database:', userType);
+        
+        // Route based on user type
+        if (userType === 'Admin') {
+          router.replace('/(admin)');
+        } else if (userType === 'instructor') {
           router.replace('/(instructor)/home');
         } else {
+          // Default to dancer/home for any other type (including 'dancer' or null)
           router.replace('/(home)/home');
         }
       } catch (userTypeError) {
-        // If user type fetch fails, go back to auth
-        router.replace('/(auth)/signin');
+        // If user type fetch fails, fallback to home
+        console.error('Failed to fetch user type:', userTypeError);
+        router.replace('/(home)/home');
       }
       
     } catch (error: any) {

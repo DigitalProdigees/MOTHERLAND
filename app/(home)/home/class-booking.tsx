@@ -1,33 +1,383 @@
+
 import Star from '@/assets/svg/Star';
 import GradientBackground from '@/components/ui/gradient-background';
 import { Fonts } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import React from 'react';
+import { auth, database } from '@/firebase.config';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { get, onValue, push, ref, set } from 'firebase/database';
+import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
+interface ClassData {
+  id: string;
+  title: string;
+  description: string;
+  availableSeats: number;
+  category: string;
+  classType: string;
+  difficulty: string;
+  subscriberPrice: string;
+  nonSubscriberPrice: string;
+  date: string;
+  time: string;
+  location: string;
+  instructorId: string;
+  instructorName: string;
+  imageUrl: string;
+  rating: number;
+  subscribers: number;
+  availability: number;
+  status: string;
+  createdAt: string;
+  userListingId?: string;
+}
+
+interface InstructorData {
+  fullName: string;
+  email: string;
+  signupYear: string;
+  experience: string;
+  bio: string;
+  profileImage: string;
+  rating: number;
+}
+
 export default function ClassBookingScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [classData, setClassData] = useState<ClassData | null>(null);
+  const [instructorData, setInstructorData] = useState<InstructorData | null>(null);
+  const [studentData, setStudentData] = useState<InstructorData | null>(null);
+
+  // Fetch class data from database with real-time listener
+  const fetchClassData = async () => {
+    try {
+      setLoading(true);
+      const classRef = ref(database, `Listings/${id}`);
+      
+      // Set up real-time listener
+      const unsubscribe = onValue(classRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const classDataWithId = {
+            id: id as string,
+            ...data
+          };
+          setClassData(classDataWithId);
+          
+          // Log current seat availability for debugging
+          const availableSeats = data.availableSeats || data.availability || 0;
+          console.log(`Real-time update: Class ${id} now has ${availableSeats} seats available`);
+          
+          // Fetch instructor data only once
+          if (!instructorData) {
+            fetchInstructorData(data.instructorId);
+          }
+        } else {
+          console.error('Class not found');
+          router.back();
+        }
+      }, (error) => {
+        console.error('Real-time listener error:', error);
+      });
+      
+      // Store the unsubscribe function for cleanup
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error setting up real-time listener:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch instructor data from personalInfo
+  const fetchInstructorData = async (instructorId: string) => {
+    try {
+      const instructorRef = ref(database, `users/${instructorId}/personalInfo`);
+      const instructorSnapshot = await get(instructorRef);
+      
+      if (instructorSnapshot.exists()) {
+        const data = instructorSnapshot.val();
+        setInstructorData({
+          fullName: data.fullName || 'Instructor',
+          email: data.email || '',
+          signupYear: data.signupYear || new Date().getFullYear().toString(),
+          experience: data.experience || '1 Year Experience',
+          bio: data.bio || 'No bio available',
+          profileImage: data.profileImage || '',
+          rating: data.rating || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching instructor data:', error);
+    }
+  };
+
+  // Fetch student data from personalInfo
+  const fetchStudentData = async (studentId: string) => {
+    try {
+      const studentRef = ref(database, `users/${studentId}/personalInfo`);
+      const studentSnapshot = await get(studentRef);
+      
+      if (studentSnapshot.exists()) {
+        const data = studentSnapshot.val();
+        setStudentData({
+          fullName: data.fullName || 'Student',
+          email: data.email || '',
+          signupYear: data.signupYear || new Date().getFullYear().toString(),
+          experience: data.experience || '1 Year Experience',
+          bio: data.bio || 'No bio available',
+          profileImage: data.profileImage || '',
+          rating: data.rating || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+    }
+  };
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    
+    if (id) {
+      fetchClassData().then((unsub) => {
+        unsubscribe = unsub;
+      });
+    }
+    
+    // Fetch current user's personal info
+    const user = auth.currentUser;
+    if (user) {
+      fetchStudentData(user.uid);
+    }
+    
+    // Cleanup listener on unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [id]);
 
   const handleBackPress = () => {
     router.back();
   };
 
-  const handleConfirmPress = () => {
-    console.log('Confirm booking pressed');
-    // Add booking confirmation logic here
+  const handleDescriptionToggle = () => {
+    setIsDescriptionExpanded(!isDescriptionExpanded);
   };
+
+  // Function to truncate text to first 50 words
+  const truncateText = (text: string, wordLimit: number = 50) => {
+    const words = text.split(' ');
+    if (words.length <= wordLimit) {
+      return text;
+    }
+    return words.slice(0, wordLimit).join(' ') + '...';
+  };
+
+  // Function to get the display text for description
+  const getDescriptionText = () => {
+    if (!classData) return '';
+    
+    if (isDescriptionExpanded) {
+      return classData.description;
+    }
+    return truncateText(classData.description, 50);
+  };
+
+  // Function to check if description needs show more/less
+  const shouldShowToggle = () => {
+    if (!classData) return false;
+    const words = classData.description.split(' ');
+    return words.length > 50;
+  };
+
+  const handleConfirmPress = async () => {
+    try {
+      setBooking(true);
+      const user = auth.currentUser;
+      if (!user) {
+        alert('You must be logged in to book a class.');
+        setBooking(false);
+        return;
+      }
+
+      if (!classData) {
+        alert('Class data not available.');
+        setBooking(false);
+        return;
+      }
+
+      // Check seat availability before proceeding with booking
+      const currentSeats = classData.availableSeats || classData.availability || 0;
+      if (currentSeats <= 0) {
+        alert('Sorry, no seats are available for this class.');
+        setBooking(false);
+        return;
+      }
+
+      // Create booking data
+      const bookingData = {
+        id: `booking_${Date.now()}`,
+        classId: classData.id,
+        classTitle: classData.title,
+        classDescription: classData.description,
+        classCategory: classData.category,
+        classType: classData.classType,
+        classDifficulty: classData.difficulty,
+        classImage: classData.imageUrl,
+        classDate: classData.date,
+        classTime: classData.time,
+        classLocation: classData.location,
+        price: classData.subscriberPrice,
+        totalPrice: `${getNumericPrice(classData.subscriberPrice) + 3}`,
+        instructorId: classData.instructorId,
+        instructorName: classData.instructorName,
+        instructorImage: instructorData?.profileImage || '',
+        studentId: user.uid,
+        studentName: studentData?.fullName || user.displayName || 'Student',
+        studentEmail: user.email || '',
+        bookingDate: new Date().toISOString(),
+        status: 'confirmed',
+        paymentStatus: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save booking to user's bookings
+      const userBookingsRef = ref(database, `users/${user.uid}/bookings`);
+      const newBookingRef = push(userBookingsRef);
+      await set(newBookingRef, bookingData);
+
+      // Save booking to instructor's orders
+      const instructorOrdersRef = ref(database, `users/${classData.instructorId}/orders`);
+      const newOrderRef = push(instructorOrdersRef);
+      await set(newOrderRef, bookingData);
+
+      // Update class availability - decrement availableSeats in BOTH locations
+      const globalClassRef = ref(database, `Listings/${classData.id}`);
+      const userClassRef = ref(database, `users/${classData.instructorId}/Listings/${classData.userListingId || classData.id}`);
+      
+      const classSnapshot = await get(globalClassRef);
+      if (classSnapshot.exists()) {
+        const currentData = classSnapshot.val();
+        const currentSeats = currentData.availableSeats || currentData.availability || 0;
+        
+        // Check if seats are available before booking
+        if (currentSeats <= 0) {
+          alert('Sorry, no seats are available for this class.');
+          setBooking(false);
+          return;
+        }
+        
+        const newSeats = Math.max(0, currentSeats - 1);
+        
+        // Get current subscriber count and increment it
+        const currentSubscribers = currentData.subscribers || 0;
+        const newSubscribers = currentSubscribers + 1;
+        
+        // Update GLOBAL listings (for all users to see)
+        await set(ref(database, `Listings/${classData.id}/availableSeats`), newSeats);
+        await set(ref(database, `Listings/${classData.id}/availability`), newSeats);
+        await set(ref(database, `Listings/${classData.id}/subscribers`), newSubscribers);
+        
+        // Update USER's personal listings (for instructor to see)
+        await set(ref(database, `users/${classData.instructorId}/Listings/${classData.userListingId || classData.id}/availableSeats`), newSeats);
+        await set(ref(database, `users/${classData.instructorId}/Listings/${classData.userListingId || classData.id}/availability`), newSeats);
+        await set(ref(database, `users/${classData.instructorId}/Listings/${classData.userListingId || classData.id}/subscribers`), newSubscribers);
+        
+        console.log(`Booking created: Seats ${currentSeats} -> ${newSeats}, Subscribers ${currentSubscribers} -> ${newSubscribers} for class ${classData.id}`);
+      } else {
+        console.error('Class not found when trying to update seats');
+        alert('Error updating class availability. Please try again.');
+        setBooking(false);
+        return;
+      }
+
+      alert('Booking confirmed successfully!');
+      router.back();
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      alert('Failed to confirm booking. Please try again.');
+    } finally {
+      setBooking(false);
+    }
+  };
+
+  // Helper function to get numeric price value
+  const getNumericPrice = (priceString: string) => {
+    if (priceString.toLowerCase() === 'free' || priceString === 'Free') {
+      return 0;
+    }
+    // Remove $ symbol and parse as number
+    const cleanPrice = priceString.replace('$', '').replace('USD', '').trim();
+    const numericPrice = parseInt(cleanPrice);
+    return isNaN(numericPrice) ? 0 : numericPrice;
+  };
+
+  // Get category icon based on category
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'hip-hop':
+        return require('@/assets/images/hipHop2.png');
+      case 'ballet':
+        return require('@/assets/images/ballet.png');
+      case 'contemporary':
+        return require('@/assets/images/contomeprorary.png');
+      case 'jazz':
+        return require('@/assets/images/jazz.png');
+      case 'salsa':
+        return require('@/assets/images/salsa.png');
+      case 'swing':
+        return require('@/assets/images/swing.png');
+      case 'modern':
+        return require('@/assets/images/modern.png');
+      case 'tap':
+        return require('@/assets/images/tap.png');
+      default:
+        return require('@/assets/images/hipHop2.png');
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8A53C2" />
+          <Text style={styles.loadingText}>Loading booking details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!classData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Class not found</Text>
+          <Pressable style={styles.backButton} onPress={handleBackPress}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,34 +406,43 @@ export default function ClassBookingScreen() {
         {/* Class Details Card */}
         <View style={styles.classCard}>
           <Image 
-            source={require('@/assets/images/streetcard.png')}
+            source={classData.imageUrl ? { uri: classData.imageUrl } : require('@/assets/images/streetcard.png')}
             style={styles.classImage}
             resizeMode="cover"
           />
           <View style={styles.classOverlay}>
             <Image 
-              source={require('@/assets/images/hipHop2.png')}
+              source={getCategoryIcon(classData.category)}
               style={styles.categoryIcon}
               resizeMode="contain"
             />
-            <Text style={styles.categoryText}>Hip-Hop</Text>
+            <Text style={styles.categoryText}>{classData.category}</Text>
           </View>
           <View style={styles.classInfo}>
             <View style={styles.titlePriceRow}>
-              <Text style={styles.classTitle}>Street Dance Basics</Text>
+              <Text style={styles.classTitle}>{classData.title}</Text>
               <View style={styles.priceContainer}>
-                <Text style={styles.price}>$0</Text>
+                <Text style={styles.price}>
+                  {classData.subscriberPrice.toLowerCase() === 'free' ? '$0' : `${classData.subscriberPrice}`}
+                </Text>
                 <View style={styles.subscribersButton}>
                   <Text style={styles.subscribersText}>Subscribers</Text>
                 </View>
               </View>
             </View>
             <Text style={styles.classDescription}>
-              Lorem ipsum dolor sit amet risus phasellus. Morbi Lorem ipsum dolor sit amet risus phasellus.
+              {getDescriptionText()}
             </Text>
+            {shouldShowToggle() && (
+              <Pressable onPress={handleDescriptionToggle} style={styles.showMoreContainer}>
+                <Text style={styles.showMore}>
+                  {isDescriptionExpanded ? 'Show less' : 'Show more'}
+                </Text>
+              </Pressable>
+            )}
             <View style={styles.ratingDurationRow}>
               <View style={styles.ratingContainer}>
-                <Text style={styles.rating}>4.9</Text>
+                <Text style={styles.rating}>{classData.rating.toFixed(1)}</Text>
                 <View style={styles.stars}>
                   {[...Array(5)].map((_, index) => (
                     <Star key={index} width={16} height={16} />
@@ -96,18 +455,18 @@ export default function ClassBookingScreen() {
                   style={styles.durationIcon}
                   resizeMode="contain"
                 />
-                <Text style={styles.durationText}>45 min</Text>
+                <Text style={styles.durationText}>60 min</Text>
               </View>
             </View>
             <View style={styles.instructorRow}>
               <Text style={styles.instructorLabel}>Instructor:</Text>
               <View style={styles.instructorContainer}>
                 <Image 
-                  source={require('@/assets/images/annie-bens.png')}
+                  source={instructorData?.profileImage ? { uri: instructorData.profileImage } : require('@/assets/images/annie-bens.png')}
                   style={styles.instructorAvatar}
                   resizeMode="cover"
                 />
-                <Text style={styles.instructorName}>James Ray</Text>
+                <Text style={styles.instructorName}>{instructorData?.fullName || classData.instructorName}</Text>
               </View>
             </View>
             <View style={styles.seatAvailabilityContainer}>
@@ -117,7 +476,9 @@ export default function ClassBookingScreen() {
                 resizeMode="contain"
               />
               <Text style={styles.seatAvailabilityText}>Seat Availability</Text>
-              <Text style={styles.seatCount}>10 available</Text>
+              <Text style={styles.seatCount}>
+                {classData.availableSeats || classData.availability || 0} available
+              </Text>
             </View>
           </View>
         </View>
@@ -139,7 +500,7 @@ export default function ClassBookingScreen() {
                 style={styles.scheduleIcon}
                 resizeMode="contain"
               />
-              <Text style={styles.scheduleText}>10:00 am</Text>
+              <Text style={styles.scheduleText}>{classData.time}</Text>
             </View>
             <View style={styles.scheduleCard}>
               <Image 
@@ -147,7 +508,7 @@ export default function ClassBookingScreen() {
                 style={styles.scheduleIcon}
                 resizeMode="contain"
               />
-              <Text style={styles.scheduleText}>Wed, Jul 12, 10:00</Text>
+              <Text style={styles.scheduleText}>{classData.date}</Text>
             </View>
           </View>
         </View>
@@ -157,23 +518,27 @@ export default function ClassBookingScreen() {
           <Text style={styles.sectionTitle}>Pricing Details</Text>
           <View style={styles.pricingCard}>
             <View style={styles.pricingRow}>
-              <Text style={styles.pricingLabel}>$3500 USD x 1 day</Text>
-              <Text style={styles.pricingValue}>$3,500 USD</Text>
+              <Text style={styles.pricingLabel}>
+                {classData.subscriberPrice.toLowerCase() === 'free' ? '0 USD' : `${classData.subscriberPrice} USD`} x 1 class
+              </Text>
+              <Text style={styles.pricingValue}>
+                {classData.subscriberPrice.toLowerCase() === 'free' ? '0 USD' : `${classData.subscriberPrice} USD`}
+              </Text>
             </View>
             <View style={styles.pricingRow}>
               <View style={styles.pricingLabelContainer}>
-                <Text style={styles.pricingLabel}>Arbo service fee</Text>
+                <Text style={styles.pricingLabel}>Service fee</Text>
                 <Image 
                   source={require('@/assets/images/iinfo.png')}
                   style={styles.infoIcon}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.pricingValue}>$262 USD</Text>
+              <Text style={styles.pricingValue}>$2 USD</Text>
             </View>
             <View style={styles.pricingRow}>
               <Text style={styles.pricingLabel}>Tax</Text>
-              <Text style={styles.pricingValue}>$210 USD</Text>
+              <Text style={styles.pricingValue}>$1 USD</Text>
             </View>
             <View style={styles.pricingRow}>
               <View style={styles.pricingLabelContainer}>
@@ -184,12 +549,12 @@ export default function ClassBookingScreen() {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={[styles.pricingValue, styles.creditsValue]}>$1750.0 ARD</Text>
+              <Text style={[styles.pricingValue, styles.creditsValue]}>$5.0 ARD</Text>
             </View>
             <View style={styles.pricingDivider} />
             <View style={styles.pricingRow}>
               <Text style={styles.totalLabel}>Total USD</Text>
-              <Text style={styles.totalValue}>$3,972 USD</Text>
+              <Text style={styles.totalValue}>${getNumericPrice(classData.subscriberPrice) + 3} USD</Text>
             </View>
           </View>
         </View>
@@ -258,9 +623,25 @@ export default function ClassBookingScreen() {
         </View>
 
         {/* Confirm Button */}
-        <Pressable onPress={handleConfirmPress} style={styles.confirmButtonContainer}>
-          <GradientBackground style={styles.confirmButton}>
-            <Text style={styles.confirmButtonText}>Confirm</Text>
+        <Pressable 
+          onPress={handleConfirmPress} 
+          style={styles.confirmButtonContainer} 
+          disabled={booking || (classData && (classData.availableSeats || classData.availability || 0) <= 0)}
+        >
+          <GradientBackground style={[
+            styles.confirmButton,
+            (classData && (classData.availableSeats || classData.availability || 0) <= 0) && styles.disabledConfirmButton
+          ]}>
+            {booking ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={[
+                styles.confirmButtonText,
+                (classData && (classData.availableSeats || classData.availability || 0) <= 0) && styles.disabledConfirmButtonText
+              ]}>
+                {(classData && (classData.availableSeats || classData.availability || 0) <= 0) ? 'No seats available' : 'Confirm'}
+              </Text>
+            )}
           </GradientBackground>
         </Pressable>
       </ScrollView>
@@ -369,7 +750,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     color: '#666666',
     lineHeight: 20,
-    marginBottom: 12,
   },
   ratingDurationRow: {
     flexDirection: 'row',
@@ -656,5 +1036,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: Fonts.bold,
     color: '#FFFFFF',
+  },
+  disabledConfirmButton: {
+    backgroundColor: '#CCCCCC',
+  },
+  disabledConfirmButtonText: {
+    color: '#666666',
+  },
+  // Loading and error states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: Fonts.medium,
+    color: '#666666',
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontFamily: Fonts.bold,
+    color: '#000000',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontFamily: Fonts.medium,
+    color: '#8A53C2',
+  },
+  showMoreContainer: {
+    alignSelf: 'flex-start',
+  },
+  showMore: {
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+    marginBottom:12,
+    color: '#8A53C2',
+    textDecorationLine: 'underline',
   },
 });

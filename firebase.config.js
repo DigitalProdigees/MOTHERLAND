@@ -5,18 +5,19 @@ import { initializeApp } from "firebase/app";
 import { getReactNativePersistence, initializeAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyC_LaaQkFDwThfaaWc0bpmcm0HcfZCuQ40",
-  authDomain: "motherland-b0f07.firebaseapp.com",
-  databaseURL: "https://motherland-b0f07-default-rtdb.firebaseio.com",
-  projectId: "motherland-b0f07",
-  storageBucket: "motherland-b0f07.firebasestorage.app",
-  messagingSenderId: "664608614063",
-  appId: "1:664608614063:web:78860eebf49ae53e4b165a",
-  measurementId: "G-HQ2XYJDPT3"
+  apiKey: "AIzaSyBe8T2atS2Ke5RINSWRqQpWR6Ke8nEQK3s",
+  authDomain: "motherlandjams-e82ea.firebaseapp.com",
+  databaseURL: "https://motherlandjams-e82ea-default-rtdb.firebaseio.com",
+  projectId: "motherlandjams-e82ea",
+  storageBucket: "motherlandjams-e82ea.firebasestorage.app",
+  messagingSenderId: "935504820183",
+  appId: "1:935504820183:web:c6a91a47568eb93981fd92",
+  measurementId: "G-4VLLWZGNVH"
 };
 
 // Initialize Firebase
@@ -30,6 +31,7 @@ const auth = initializeAuth(app, {
 // Initialize Firebase services
 const db = getFirestore(app);
 const database = getDatabase(app);
+const storage = getStorage(app);
 
 // Initialize Analytics (only for web and only if supported)
 let analytics;
@@ -41,5 +43,5 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export { analytics, auth, database, db };
+export { analytics, auth, database, db, storage };
 export default app;

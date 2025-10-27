@@ -1,6 +1,6 @@
-import Star from '@/assets/svg/Star';
+import StarRating from '@/assets/svg/StarRating';
 import { Fonts } from '@/constants/theme';
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface DanceClassCardProps {
@@ -15,6 +15,7 @@ interface DanceClassCardProps {
   statusIcon?: string;
   duration?: string;
   seatAvailability?: string;
+  category?: string;
   onPress?: () => void;
 }
 
@@ -30,8 +31,62 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
   statusIcon,
   duration,
   seatAvailability,
+  category,
   onPress,
 }) => {
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // Function to truncate text to first 10 words
+  const truncateText = (text: string, wordLimit: number = 10) => {
+    const words = text.split(' ');
+    if (words.length <= wordLimit) {
+      return text;
+    }
+    return words.slice(0, wordLimit).join(' ') + '...';
+  };
+
+  // Function to get the display text for description
+  const getDescriptionText = () => {
+    if (isDescriptionExpanded) {
+      return description;
+    }
+    return truncateText(description, 10);
+  };
+
+  // Function to check if description needs show more/less
+  const shouldShowToggle = () => {
+    const words = description.split(' ');
+    return words.length > 10;
+  };
+
+  const handleDescriptionToggle = () => {
+    setIsDescriptionExpanded(!isDescriptionExpanded);
+  };
+
+  const getCategoryImage = (category: string) => {
+    switch (category?.toLowerCase()) {
+      case 'ballet':
+        return require('@/assets/images/ballet.png');
+      case 'hip-hop':
+      case 'hiphop':
+        return require('@/assets/images/hipHop.png');
+      case 'jazz':
+        return require('@/assets/images/jazz.png');
+      case 'salsa':
+        return require('@/assets/images/salsa.png');
+      case 'swing':
+        return require('@/assets/images/swing.png');
+      case 'tap':
+        return require('@/assets/images/tap.png');
+      case 'modern':
+        return require('@/assets/images/modern.png');
+      case 'contemporary':
+        return require('@/assets/images/contomeprorary.png');
+      default:
+        return require('@/assets/images/hipHop.png'); // Default fallback
+    }
+  };
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -40,29 +95,23 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
       ]}
       onPress={onPress}
     >
-      {/* Left Image Section */}
-      <View style={styles.imageContainer}>
-        <Image 
-          source={require('@/assets/svg/cardimage.png')}
-          style={styles.image}
-          resizeMode="cover"
-        />
-        {/* Rating below image */}
-        <View style={styles.ratingContainer}>
-          <Text style={styles.rating}>{rating}</Text>
-          <View style={styles.stars}>
-            {[...Array(5)].map((_, index) => (
-              <Star key={index} width={18} height={18} />
-            ))}
-          </View>
+      {/* Top Section with Image and Content */}
+      <View style={styles.topSection}>
+        {/* Left Image Section */}
+        <View style={styles.imageContainer}>
+          <Image 
+            source={
+              imageUrl && imageUrl !== 'placeholder'
+                ? { uri: imageUrl }
+                : require('@/assets/svg/cardimage.png')
+            }
+            style={styles.image}
+            resizeMode="cover"
+          />
         </View>
-        
-        {/* Status text */}
-        <Text style={styles.statusLabel}>Status</Text>
-      </View>
 
-      {/* Right Content Section */}
-      <View style={styles.content}>
+        {/* Right Content Section */}
+        <View style={styles.content}>
         {/* Title */}
         <Text style={styles.title}>{title}</Text>
         
@@ -92,13 +141,47 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
         </View>
 
         {/* Description */}
-        <Text style={styles.description} numberOfLines={2}>
-          {description}
-        </Text>
+        <View>
+          <Text style={styles.description}>
+            Describtion : {getDescriptionText()}
+          </Text>
+          {shouldShowToggle() && (
+            <Pressable onPress={handleDescriptionToggle} style={styles.showMoreContainer}>
+              <Text style={styles.showMore}>
+                {isDescriptionExpanded ? 'Read less' : 'Read more'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+        </View>
+      </View>
 
-        {/* Bottom Stats Row */}
-        <View style={styles.statsRow}>
-          {/* Students */}
+      {/* Bottom Section - Below Image and Details */}
+      <View style={styles.bottomSection}>
+        {/* Rating and Students Row */}
+        <View style={styles.ratingStudentsRow}>
+          {/* Rating Section */}
+          <View style={styles.ratingContainer}>
+            <Text style={styles.rating}>{rating}</Text>
+            <View style={styles.stars}>
+              {[...Array(5)].map((_, index) => {
+                const ratingValue = parseFloat(rating);
+                const isFilled = index < Math.floor(ratingValue);
+                const isHalfFilled = index === Math.floor(ratingValue) && ratingValue % 1 >= 0.5;
+                
+                return (
+                  <StarRating 
+                    key={index} 
+                    width={18} 
+                    height={18} 
+                    filled={isFilled || isHalfFilled}
+                  />
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Students Section */}
           <View style={styles.studentsContainer}>
             <Image 
               source={require('@/assets/svg/user.png')}
@@ -108,16 +191,19 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
           </View>
         </View>
 
-        {/* Trending Status */}
-        {status && (
-          <View style={styles.trendingContainer}>
-            <Image 
-              source={require('@/assets/images/fire.png')}
-              style={styles.fireIcon}
-            />
-            <Text style={styles.trendingText}>{status}</Text>
-          </View>
-        )}
+        {/* Status Row */}
+        <View style={styles.statusRow}>
+          <Text style={styles.statusLabel}>Status</Text>
+          {status && (
+            <View style={styles.trendingContainer}>
+              <Image 
+                source={require('@/assets/images/fire.png')}
+                style={styles.fireIcon}
+              />
+              <Text style={styles.trendingText}>{status}</Text>
+            </View>
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -131,18 +217,22 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 16,
     overflow: 'hidden',
-    flexDirection: 'row',
+    flexDirection: 'column',
     borderWidth: 1,
     borderColor: '#E0E0E0',
+  },
+  topSection: {
+    flexDirection: 'row',
   },
   imageContainer: {
     width: 101,
     height: 138,
+    borderRadius:10,
   },
   image: {
     width: 101,
     height: 138,
-  
+    borderRadius:10,
   },
   content: {
     flex: 1,
@@ -219,7 +309,15 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     color: '#666666',
     lineHeight: 16,
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  showMoreContainer: {
+    alignSelf: 'flex-start',
+  },
+  showMore: {
+    fontSize: 12,
+    fontFamily: Fonts.medium,
+    color: '#000000',
   },
   statsRow: {
   
@@ -227,22 +325,36 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
+  bottomSection: {
+    width: '100%',
+    paddingTop: 12,
+    marginTop: 8,
+  },
+  ratingStudentsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 12,
   },
   rating: {
     fontSize: 16,
     fontFamily: Fonts.medium,
     color: '#000000',
   },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   statusLabel: {
     fontSize: 16,
     fontFamily: Fonts.medium,
     color: '#808B95',
-    marginTop: 27
   },
   stars: {
     flexDirection: 'row',
@@ -252,7 +364,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 8,
   },
   userIcon: {
     width: 25 ,
@@ -267,10 +378,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
     borderRadius: 8,
     paddingVertical: 10,
-paddingHorizontal:13,    flexDirection:'row',
-    alignItems:'center',
-    justifyContent:'center',
-    alignSelf:'flex-end',
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
   },
   trendingText: {

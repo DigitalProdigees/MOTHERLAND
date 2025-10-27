@@ -136,116 +136,11 @@ export default function SignUpScreen() {
   };
 
   const handleGoogleSignUp = async () => {
-    setIsLoading(true);
-    try {
-      const result = await AuthService.signInWithGoogle();
-      
-      if (result.success && result.user) {
-        console.log('Google Sign-Up successful:', { uid: result.user.uid, email: result.user.email });
-        
-        // For Google Sign-Up, check if user exists in our database
-        // We'll use a comprehensive check to see if user has any data in database
-        try {
-          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
-          console.log('🔍 Google Sign-Up - User exists in database:', userExists);
-          
-          if (userExists) {
-            // User exists in database, get their type and navigate to home
-            console.log('🔍 Google Sign-Up - Existing user detected, getting user type');
-            const userType = await AuthService.getUserType(result.user.uid);
-            console.log('🔍 Google Sign-Up - User type:', userType);
-            
-            if (userType === 'instructor') {
-              router.replace('/(instructor)/home');
-            } else {
-              router.replace('/(home)/home');
-            }
-          } else {
-            // User doesn't exist in database, treat as new user
-            console.log('🔍 Google Sign-Up - New user detected (no database record), navigating to profile completion');
-            router.push('/(auth)/google-profile-completion');
-          }
-        } catch (error) {
-          console.log('🔍 Google Sign-Up - Error checking user existence, treating as new user:', error);
-          // If check fails, treat as new user
-          router.push('/(auth)/google-profile-completion');
-        }
-      } else {
-        // Don't show alert for user cancellation
-        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
-          console.log('Google Sign-Up cancelled by user');
-        } else {
-          Alert.alert('Sign Up Failed', result.error || 'Google Sign-Up failed');
-        }
-      }
-    } catch (error: any) {
-      console.log('Google Sign-Up error:', error);
-      Alert.alert('Sign Up Failed', error.message || 'Google Sign-Up failed');
-    } finally {
-      setIsLoading(false);
-    }
+    Alert.alert('Not Available', 'Google Sign-Up is not available in Expo Go. Please use email/password authentication.');
   };
 
   const handleAppleSignUp = async () => {
-    console.log('🍎 Apple Sign-Up started');
-    setIsLoading(true);
-    try {
-      const result = await AuthService.signInWithApple();
-      
-      console.log('🍎 Apple Sign-Up result:', {
-        success: result.success,
-        isNewUser: result.isNewUser,
-        hasUser: !!result.user,
-        userUid: result.user?.uid,
-        userEmail: result.user?.email
-      });
-      
-      if (result.success && result.user) {
-        console.log('🍎 Apple Sign-Up successful:', { uid: result.user.uid, email: result.user.email });
-        
-        // For Apple Sign-Up, check if user exists in our database
-        // We'll use a comprehensive check to see if user has any data in database
-        try {
-          const userExists = await AuthService.userExistsInDatabase(result.user.uid);
-          console.log('🍎 User exists in database:', userExists);
-          
-          if (userExists) {
-            // User exists in database, get their type and navigate to home
-            console.log('🍎 Existing Apple user detected, getting user type');
-            const userType = await AuthService.getUserType(result.user.uid);
-            console.log('🍎 User type from database:', userType);
-            
-            if (userType === 'instructor') {
-              console.log('🍎 Navigating to instructor home');
-              router.replace('/(instructor)/home');
-            } else {
-              console.log('🍎 Navigating to dancer home');
-              router.replace('/(home)/home');
-            }
-          } else {
-            // User doesn't exist in database, treat as new user
-            console.log('🍎 New Apple user detected (no database record), navigating to profile completion');
-            router.push('/(auth)/apple-profile-completion');
-          }
-        } catch (error) {
-          console.log('🍎 Error checking user existence, treating as new user:', error);
-          // If check fails, treat as new user
-          router.push('/(auth)/apple-profile-completion');
-        }
-      } else {
-        // Don't show alert for user cancellation
-        if (result.error?.includes('cancelled') || result.error?.includes('canceled')) {
-          console.log('Apple Sign-Up cancelled by user');
-        } else {
-          Alert.alert('Sign Up Failed', result.error || 'Apple Sign-Up failed');
-        }
-      }
-    } catch (error: any) {
-      console.log('Apple Sign-Up error:', error);
-      Alert.alert('Sign Up Failed', error.message || 'Apple Sign-Up failed');
-    } finally {
-      setIsLoading(false);
-    }
+    Alert.alert('Not Available', 'Apple Sign-Up is not available in Expo Go. Please use email/password authentication.');
   };
 
   const handleBack = () => {

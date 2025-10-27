@@ -2,16 +2,15 @@ import FeaturedClassesSection from '@/components/ui/featured-classes-section';
 import GradientBackground from '@/components/ui/gradient-background';
 import StreetDanceSection from '@/components/ui/street-dance-section';
 import { Fonts } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ClassesIndexScreen() {
-  const router = useRouter();
-
+  const navigation = useNavigation();
   const handleClassPress = (classId: string) => {
-    router.push(`/home/classDetails?id=${classId}`);
+  
   };
 
   const handleSeeAllFeatured = () => {

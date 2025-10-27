@@ -186,7 +186,7 @@ const Drawer: React.FC<DrawerProps> = ({
             <View style={styles.logoutSection}>
               <Pressable style={styles.logoutButton} onPress={onLogout}>
                 <Image
-                  source={require('@/assets/images/signout.png')}
+                  source={require('@/assets/images/logout2.png')}
                   style={styles.logoutIcon}
                   resizeMode="contain"
                 />

@@ -1,5 +1,5 @@
 import { Fonts, Icons } from '@/constants/theme';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface SearchBarProps {
@@ -10,14 +10,23 @@ interface SearchBarProps {
   value?: string;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ 
-  onPress, 
-  onFilterPress, 
-  onSearchChange, 
-  placeholder = "Search here",
-  value 
-}) => {
+const SearchBar: React.FC<SearchBarProps> = (props) => {
+  const { 
+    onPress, 
+    onFilterPress, 
+    onSearchChange, 
+    placeholder = "Search here",
+    value 
+  } = props;
+  
   const [searchText, setSearchText] = useState(value || '');
+  
+  // Update search text when value prop changes
+  useEffect(() => {
+    if (value !== undefined) {
+      setSearchText(value);
+    }
+  }, [value]);
 
   const handleTextChange = (text: string) => {
     setSearchText(text);

@@ -5,6 +5,7 @@ export default function InsSettingsLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="favourites" />
       <Stack.Screen name="my-post" />
+      <Stack.Screen name="my-orders" />
       <Stack.Screen name="my-subscriptions" />
       <Stack.Screen name="change-password" />
       <Stack.Screen name="contact-us" />

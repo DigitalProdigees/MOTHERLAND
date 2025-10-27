@@ -6,13 +6,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 interface CategoriesSectionProps {
   onSeeAllPress?: () => void;
   onCategoryPress?: (category: string) => void;
+  selectedCategory?: string;
 }
 
 const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   onSeeAllPress,
   onCategoryPress,
+  selectedCategory: externalSelectedCategory,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState('all'); // Default to 'All Classes'
+  const [internalSelectedCategory, setInternalSelectedCategory] = useState('all'); // Default to 'All Classes'
+  const selectedCategory = externalSelectedCategory !== undefined ? externalSelectedCategory : internalSelectedCategory;
   
   const categories = [
     { id: 'all', label: 'All Classes', icon: 'vector', isVector: true },
@@ -29,7 +32,9 @@ const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   ];
 
   const handleCategoryPress = (categoryId: string) => {
-    setSelectedCategory(categoryId);
+    if (externalSelectedCategory === undefined) {
+      setInternalSelectedCategory(categoryId);
+    }
     onCategoryPress?.(categoryId);
   };
 

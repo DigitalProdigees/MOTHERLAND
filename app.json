@@ -12,16 +12,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.motherlandjames.app",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to take profile pictures.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select profile pictures.",
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLName": "com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29",
-            "CFBundleURLSchemes": ["com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29"]
-          }
-        ]
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select profile pictures."
       }
     },
     "android": {
@@ -68,12 +61,6 @@
           "cameraPermission": "The app accesses your camera to let you take photos."
         }
       ],
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.664608614063-oi9ds2sqein313gq0rjr9ihs2odnuc29"
-        }
-      ]
     ],
     "experiments": {
       "typedRoutes": true,

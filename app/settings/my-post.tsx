@@ -3,15 +3,15 @@ import { Fonts } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    Dimensions,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -249,7 +249,7 @@ const MyPostsScreen: React.FC = () => {
       <Modal
         visible={showFilterModal}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={handleFilterClose}
       >
         <View style={styles.modalOverlay}>

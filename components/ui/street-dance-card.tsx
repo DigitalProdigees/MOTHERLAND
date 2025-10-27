@@ -1,4 +1,4 @@
-import Star from '@/assets/svg/Star';
+import StarRating from '@/assets/svg/StarRating';
 import { Fonts } from '@/constants/theme';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -12,6 +12,7 @@ interface StreetDanceCardProps {
   description: string;
   duration: string;
   seatAvailability: string;
+  category?: string;
   onPress?: () => void;
 }
 
@@ -24,8 +25,33 @@ const StreetDanceCard: React.FC<StreetDanceCardProps> = ({
   description,
   duration,
   seatAvailability,
+  category,
   onPress,
 }) => {
+  const getCategoryImage = (category: string) => {
+    switch (category?.toLowerCase()) {
+      case 'ballet':
+        return require('@/assets/svg/Ballet.jsx');
+      case 'hip-hop':
+      case 'hiphop':
+        return require('@/assets/svg/HipHop.jsx');
+      case 'jazz':
+        return require('@/assets/svg/Jazz.jsx');
+      case 'salsa':
+        return require('@/assets/svg/Salsa.jsx');
+      case 'swing':
+        return require('@/assets/svg/Swing.jsx');
+      case 'tap':
+        return require('@/assets/svg/Tap.jsx');
+      case 'modern':
+        return require('@/assets/svg/Modern.jsx');
+      case 'contemporary':
+        return require('@/assets/svg/Contemporary.jsx');
+      default:
+        return require('@/assets/svg/HipHop.jsx'); // Default fallback
+    }
+  };
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -42,13 +68,15 @@ const StreetDanceCard: React.FC<StreetDanceCardProps> = ({
           resizeMode="cover"
         />
         
-        {/* Hip-Hop Tag */}
+        {/* Category Tag */}
         <View style={styles.hipHopTag}>
-          <Image 
-            source={require('@/assets/images/hipHop.png')}
-            style={styles.hipHopIcon}
-          />
-          <Text style={styles.hipHopText}>Hip-Hop</Text>
+          {React.createElement(getCategoryImage(category || 'hip-hop'), {
+            width: 30,
+            height: 30,
+            style: styles.hipHopIcon,
+            color: '#FFFFFF'
+          })}
+          <Text style={styles.hipHopText}>{category || 'Hip-Hop'}</Text>
         </View>
       </View>
 
@@ -76,9 +104,20 @@ const StreetDanceCard: React.FC<StreetDanceCardProps> = ({
           <View style={styles.ratingSection}>
             <Text style={styles.rating}>{rating}</Text>
             <View style={styles.stars}>
-              {[...Array(5)].map((_, index) => (
-                <Star key={index} width={16} height={16} />
-              ))}
+              {[...Array(5)].map((_, index) => {
+                const ratingValue = parseFloat(rating);
+                const isFilled = index < Math.floor(ratingValue);
+                const isHalfFilled = index === Math.floor(ratingValue) && ratingValue % 1 >= 0.5;
+                
+                return (
+                  <StarRating 
+                    key={index} 
+                    width={16} 
+                    height={16} 
+                    filled={isFilled || isHalfFilled}
+                  />
+                );
+              })}
             </View>
           </View>
 
@@ -149,6 +188,7 @@ const styles = StyleSheet.create({
   hipHopIcon: {
     width: 30,
     height: 30,
+    tintColor: '#FFFFFF',
   },
   hipHopText: {
     color: '#FFFFFF',
