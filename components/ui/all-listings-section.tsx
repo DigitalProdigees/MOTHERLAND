@@ -1,6 +1,6 @@
 import { Fonts } from '@/constants/theme';
 import { database } from '@/firebase.config';
-import { onValue, ref } from 'firebase/database';
+import { get, onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DanceClassCard from './dance-class-card';
@@ -51,7 +51,7 @@ const AllListingsSection: React.FC<AllListingsSectionProps> = ({
   useEffect(() => {
     // Fetch all published listings from global Listings node
     const listingsRef = ref(database, 'Listings');
-    const unsubscribe = onValue(listingsRef, (snapshot) => {
+    const unsubscribe = onValue(listingsRef, async (snapshot) => {
       const listingsData = snapshot.val();
       if (listingsData) {
         const allListings: ClassListing[] = [];
@@ -71,12 +71,31 @@ const AllListingsSection: React.FC<AllListingsSectionProps> = ({
         const sortedListings = allListings
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+        // Fetch instructor profile images for each listing
+        const listingsWithInstructorImages = await Promise.all(
+          sortedListings.map(async (listing) => {
+            let instructorImageUrl = '';
+            try {
+              const instructorRef = ref(database, `users/${listing.instructorId}/personalInfo`);
+              const instructorSnapshot = await get(instructorRef);
+              if (instructorSnapshot.exists()) {
+                const instructorData = instructorSnapshot.val();
+                instructorImageUrl = instructorData.profileImageUrl || instructorData.profileImageUri || '';
+              }
+            } catch (error) {
+              console.log('Error fetching instructor image:', error);
+            }
+            return { ...listing, instructorImageUrl };
+          })
+        );
+
         // Transform to the format expected by DanceClassCard
-        const transformedClasses = sortedListings.map((listing) => ({
+        const transformedClasses = listingsWithInstructorImages.map((listing) => ({
           id: listing.id,
           title: listing.title,
           price: listing.subscriberPrice, // Show subscriber price
           instructor: listing.instructorName,
+          instructorImageUrl: listing.instructorImageUrl,
           rating: listing.rating.toFixed(1),
           students: `${listing.subscribers} students`,
           description: listing.description,
@@ -198,6 +217,7 @@ const AllListingsSection: React.FC<AllListingsSectionProps> = ({
               title={danceClass.title}
               price={danceClass.price}
               instructor={danceClass.instructor}
+              instructorImageUrl={danceClass.instructorImageUrl}
               rating={danceClass.rating}
               students={danceClass.students}
               description={danceClass.description}

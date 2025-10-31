@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 
 export default function HomeStackLayout() {
+  console.log('🟣 HOME STACK LAYOUT: Rendering');
   return (
     <Stack
       screenOptions={{

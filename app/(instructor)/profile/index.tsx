@@ -1,5 +1,6 @@
 import GradientBackground from '@/components/ui/gradient-background';
 import GradientButton from '@/components/ui/gradient-button';
+import ProfileAvatar from '@/components/ui/profile-avatar';
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
 import { useRouter } from 'expo-router';
@@ -178,18 +179,16 @@ export default function InstructorProfileTabScreen() {
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.profileImageContainer}>
-              {(instructorProfile?.profilePicture || instructorProfile?.profileImageUri) ? (
-                <Image 
-                  source={{ uri: instructorProfile.profilePicture || instructorProfile.profileImageUri }} 
-                  style={styles.profileImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.profileImagePlaceholder}>
-                  <Text style={styles.profileImageText}>👨‍🏫</Text>
-                </View>
-              )}
-              <TouchableOpacity style={styles.editImageButton}>
+              <ProfileAvatar
+                imageUrl={instructorProfile?.profilePicture || instructorProfile?.profileImageUri}
+                fullName={instructorProfile?.fullName || 'Instructor'}
+                size={120}
+                style={styles.profileImage}
+              />
+              <TouchableOpacity 
+                style={styles.editImageButton}
+                onPress={() => router.push('/(onboarding)/instructor-profile')}
+              >
                 <Image 
                   source={require('@/assets/images/editable.png')} 
                   style={styles.editImageIcon}
@@ -278,7 +277,10 @@ export default function InstructorProfileTabScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Instructor Settings</Text>
               <View style={styles.sectionContent}>
-                <TouchableOpacity style={styles.settingRow}>
+                <TouchableOpacity 
+                  style={styles.settingRow}
+                  onPress={() => router.push('/(onboarding)/instructor-profile')}
+                >
                   <Text style={styles.settingLabel}>Edit Profile</Text>
                   <Text style={styles.settingArrow}>›</Text>
                 </TouchableOpacity>

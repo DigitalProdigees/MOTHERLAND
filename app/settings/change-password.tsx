@@ -35,7 +35,7 @@ const ChangePassword: React.FC = () => {
   };
 
   const handleForgotPassword = () => {
-    router.push('/settings/forgot-password');
+    router.push('/(home)/settings/forgot-password');
   };
 
   useEffect(() => {

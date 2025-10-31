@@ -1,14 +1,18 @@
+import CancellationPolicySheet from '@/components/ui/cancellation-policy-sheet';
+import GuestRequirementSheet from '@/components/ui/guest-requirement-sheet';
+import TermsConditionsSheet from '@/components/ui/terms-conditions-sheet';
 import { Fonts } from '@/constants/theme';
 import { auth, database, storage } from '@/firebase.config';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { get, push, ref, remove, set } from 'firebase/database';
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { useState } from 'react';
-import { Alert, Dimensions, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -23,7 +27,7 @@ const categories: DropdownOption[] = [
   { label: 'Ballet', value: 'ballet' },
   { label: 'Contemporary', value: 'contemporary' },
   { label: 'Jazz', value: 'jazz' },
-  { label: 'Salsa', value: 'salsa' },
+  { label: 'Belly Dance', value: 'belly' },
   { label: 'Swing', value: 'swing' },
   { label: 'Modern', value: 'modern' },
 ];
@@ -122,8 +126,33 @@ export default function AddClassScreen() {
     location: params?.location as string || '',
   });
 
-  const [selectedImage, setSelectedImage] = useState<string | null>(params?.imageUrl as string || null);
+  // Custom policies state
+  const [customTerms, setCustomTerms] = useState(params?.customTerms as string || '');
+  const [customRequirements, setCustomRequirements] = useState<string[]>(() => {
+    // Handle both old string format and new array format
+    const requirements = params?.customRequirements;
+    if (Array.isArray(requirements)) {
+      return requirements;
+    } else if (typeof requirements === 'string' && requirements) {
+      // Convert string format to array (split by newlines and remove bullets)
+      return requirements.split('\n')
+        .map(r => r.replace(/^[•\-\*]\s*/, '').trim())
+        .filter(r => r !== '');
+    }
+    return [];
+  });
+  const [customCancellation, setCustomCancellation] = useState(params?.customCancellation as string || '');
+  const [cancellationPolicyHeading, setCancellationPolicyHeading] = useState(params?.cancellationPolicyHeading as string || '');
+
+  const [mainImage, setMainImage] = useState<string | null>(params?.mainImage as string || null);
+  const [subImages, setSubImages] = useState<(string | null)[]>([
+    params?.subImage1 as string || null,
+    params?.subImage2 as string || null,
+    params?.subImage3 as string || null,
+    params?.subImage4 as string || null,
+  ]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [showDropdowns, setShowDropdowns] = useState({
     category: false,
@@ -166,7 +195,7 @@ export default function AddClassScreen() {
     setShowDropdowns(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
-  const handleImageUpload = async () => {
+  const handleMainImageUpload = async () => {
     try {
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -185,7 +214,7 @@ export default function AddClassScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setSelectedImage(result.assets[0].uri);
+        setMainImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -193,12 +222,55 @@ export default function AddClassScreen() {
     }
   };
 
+  const handleSubImageUpload = async (index: number) => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant permission to access your photos.');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const updatedSubImages = [...subImages];
+        updatedSubImages[index] = result.assets[0].uri;
+        setSubImages(updatedSubImages);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const removeSubImage = (index: number) => {
+    const updatedSubImages = [...subImages];
+    updatedSubImages[index] = null;
+    setSubImages(updatedSubImages);
+  };
+
   const uploadImageToStorage = async (imageUri: string): Promise<string> => {
     try {
       setIsUploadingImage(true);
+      console.log('Storage upload: starting', { imageUri });
   
+      // Compress/convert to JPEG to ensure file:// URI and compatibility (avoids ph:// on iOS)
+      const manipulated = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
       // Convert image URI to blob
-      const response = await fetch(imageUri);
+      const response = await fetch(manipulated.uri);
       const blob = await response.blob();
   
       // Create a unique filename
@@ -213,10 +285,12 @@ export default function AddClassScreen() {
       const downloadURL = await getDownloadURL(imageRef);
   
       setIsUploadingImage(false);
+      console.log('Storage upload: success', { downloadURL });
       return downloadURL;
     } catch (error) {
       console.error("Error uploading image:", error);
       setIsUploadingImage(false);
+      console.log('Storage upload: failed');
       throw error;
     }
   };
@@ -224,26 +298,53 @@ export default function AddClassScreen() {
 
   const handleSaveDraft = async () => {
     try {
+      setIsSaving(true);
       const user = auth.currentUser;
       if (!user) {
+        setIsSaving(false);
         Alert.alert('Error', 'You must be logged in to save a draft.');
         return;
       }
 
       // Validate required fields
       if (!formData.title || !formData.description || !formData.category || !formData.availableSeats) {
+        setIsSaving(false);
         Alert.alert('Error', 'Please fill in all required fields (Title, Description, Category, Available Seats).');
         return;
       }
 
-      // Upload image if selected
-      let imageUrl = selectedImage || 'placeholder';
-      if (selectedImage && !selectedImage.startsWith('http')) {
+      // Upload main image if selected
+      let mainImageUrl = mainImage || '';
+      if (mainImage && !mainImage.startsWith('http')) {
         try {
-          imageUrl = await uploadImageToStorage(selectedImage);
+          console.log('Draft: uploading main image');
+          mainImageUrl = await uploadImageToStorage(mainImage);
         } catch (error) {
-          Alert.alert('Warning', 'Failed to upload image. Saving without image.');
-          imageUrl = 'placeholder';
+          console.log('Draft: main image upload failed');
+          Alert.alert('Warning', 'Failed to upload main image. Saving without main image.');
+          mainImageUrl = '';
+        }
+      }
+
+      // Upload sub images if selected
+      const subImageUrls: string[] = [];
+      for (let i = 0; i < subImages.length; i++) {
+        if (subImages[i] && !subImages[i]!.startsWith('http')) {
+          try {
+            console.log('Draft: uploading sub image', { index: i + 1 });
+            const url = await uploadImageToStorage(subImages[i]!);
+            subImageUrls.push(url);
+          } catch (error) {
+            console.error(`Failed to upload sub image ${i + 1}:`, error);
+            console.log('Draft: sub image upload failed', { index: i + 1 });
+            subImageUrls.push('');
+          }
+        } else if (subImages[i]) {
+          console.log('Draft: using existing sub image URL', { index: i + 1 });
+          subImageUrls.push(subImages[i]!);
+        } else {
+          console.log('Draft: no sub image provided', { index: i + 1 });
+          subImageUrls.push('');
         }
       }
 
@@ -270,55 +371,113 @@ export default function AddClassScreen() {
         createdAt: new Date().toISOString(),
         instructorId: user.uid,
         instructorName: instructorFullName,
-        imageUrl: imageUrl,
+        mainImage: mainImageUrl,
+        subImage1: subImageUrls[0] || '',
+        subImage2: subImageUrls[1] || '',
+        subImage3: subImageUrls[2] || '',
+        subImage4: subImageUrls[3] || '',
+        // Keep imageUrl for backward compatibility
+        imageUrl: mainImageUrl || 'placeholder',
         rating: 0,
         subscribers: 0,
         reviewCount: 0,
         availability: parseInt(formData.availableSeats) || 0, // Use availableSeats value
+        // Custom policies - convert requirements array to string with newlines
+        customTerms: customTerms,
+        customRequirements: customRequirements.length > 0 
+          ? customRequirements.map(req => `• ${req}`).join('\n')
+          : '',
+        customCancellation: customCancellation,
+        cancellationPolicyHeading: cancellationPolicyHeading,
       };
 
       if (isEditMode && listingId && isDraftStatus) {
         // EDIT MODE: Update existing draft
         const draftRef = ref(database, `users/${user.uid}/draftListing/${listingId}`);
         await set(draftRef, listingData);
+        setIsSaving(false);
         Alert.alert('Success', 'Draft updated successfully!');
       } else {
         // CREATE MODE: Create new draft
         const draftRef = ref(database, `users/${user.uid}/draftListing`);
         const newDraftRef = push(draftRef);
         await set(newDraftRef, listingData);
+        setIsSaving(false);
         Alert.alert('Success', 'Class saved as draft successfully!');
       }
 
       router.back();
     } catch (error) {
       console.error('Error saving draft:', error);
+      setIsSaving(false);
       Alert.alert('Error', 'Failed to save draft. Please try again.');
     }
   };
 
   const handlePublish = async () => {
     try {
+      setIsSaving(true);
       const user = auth.currentUser;
       if (!user) {
+        setIsSaving(false);
         Alert.alert('Error', 'You must be logged in to publish a class.');
         return;
       }
 
       // Validate required fields
       if (!formData.title || !formData.description || !formData.category || !formData.availableSeats) {
+        setIsSaving(false);
         Alert.alert('Error', 'Please fill in all required fields (Title, Description, Category, Available Seats).');
         return;
       }
 
-      // Upload image if selected
-      let imageUrl = selectedImage || 'placeholder';
-      if (selectedImage && !selectedImage.startsWith('http')) {
+      // Validate images: Must have main image and at least 1 sub image
+      if (!mainImage) {
+        setIsSaving(false);
+        Alert.alert('Error', 'Please upload a main image before publishing.');
+        return;
+      }
+
+      const hasAtLeastOneSubImage = subImages.some(img => img !== null);
+      if (!hasAtLeastOneSubImage) {
+        setIsSaving(false);
+        Alert.alert('Error', 'Please upload at least one sub image before publishing.');
+        return;
+      }
+
+      // Upload main image if selected
+      let mainImageUrl = mainImage || '';
+      if (mainImage && !mainImage.startsWith('http')) {
         try {
-          imageUrl = await uploadImageToStorage(selectedImage);
+          console.log('Publish: uploading main image');
+          mainImageUrl = await uploadImageToStorage(mainImage);
         } catch (error) {
-          Alert.alert('Warning', 'Failed to upload image. Publishing without image.');
-          imageUrl = 'placeholder';
+          setIsSaving(false);
+          console.log('Publish: main image upload failed');
+          Alert.alert('Error', 'Failed to upload main image. Please try again.');
+          return;
+        }
+      }
+
+      // Upload sub images if selected
+      const subImageUrls: string[] = [];
+      for (let i = 0; i < subImages.length; i++) {
+        if (subImages[i] && !subImages[i]!.startsWith('http')) {
+          try {
+            console.log('Publish: uploading sub image', { index: i + 1 });
+            const url = await uploadImageToStorage(subImages[i]!);
+            subImageUrls.push(url);
+          } catch (error) {
+            console.error(`Failed to upload sub image ${i + 1}:`, error);
+            console.log('Publish: sub image upload failed', { index: i + 1 });
+            subImageUrls.push('');
+          }
+        } else if (subImages[i]) {
+          console.log('Publish: using existing sub image URL', { index: i + 1 });
+          subImageUrls.push(subImages[i]!);
+        } else {
+          console.log('Publish: no sub image provided', { index: i + 1 });
+          subImageUrls.push('');
         }
       }
 
@@ -345,11 +504,24 @@ export default function AddClassScreen() {
         createdAt: new Date().toISOString(),
         instructorId: user.uid,
         instructorName: instructorFullName,
-        imageUrl: imageUrl,
+        mainImage: mainImageUrl,
+        subImage1: subImageUrls[0] || '',
+        subImage2: subImageUrls[1] || '',
+        subImage3: subImageUrls[2] || '',
+        subImage4: subImageUrls[3] || '',
+        // Keep imageUrl for backward compatibility
+        imageUrl: mainImageUrl || 'placeholder',
         rating: 0,
         subscribers: 0,
         reviewCount: 0,
         availability: parseInt(formData.availableSeats) || 0, // Use availableSeats value
+        // Custom policies - convert requirements array to string with newlines
+        customTerms: customTerms,
+        customRequirements: customRequirements.length > 0 
+          ? customRequirements.map(req => `• ${req}`).join('\n')
+          : '',
+        customCancellation: customCancellation,
+        cancellationPolicyHeading: cancellationPolicyHeading,
       };
 
       if (isEditMode && listingId && isDraftStatus) {
@@ -380,8 +552,10 @@ export default function AddClassScreen() {
           // Delete the draft
           await remove(draftRef);
 
+          setIsSaving(false);
           Alert.alert('Success', 'Draft published successfully and submitted for admin approval!');
         } else {
+          setIsSaving(false);
           Alert.alert('Error', 'Draft not found.');
         }
       } else if (isEditMode && listingId && !isDraftStatus) {
@@ -410,8 +584,10 @@ export default function AddClassScreen() {
             console.log(`Updated global listing: ${globalListingId}`);
           }
           
+          setIsSaving(false);
           Alert.alert('Success', 'Class updated successfully!');
         } else {
+          setIsSaving(false);
           Alert.alert('Error', 'Class not found for editing.');
         }
       } else {
@@ -434,12 +610,14 @@ export default function AddClassScreen() {
         // Also update the user's listing with the global listing ID for reference
         await set(ref(database, `users/${user.uid}/Listings/${newUserListingRef.key}/listingId`), newGlobalListingRef.key);
 
+        setIsSaving(false);
         Alert.alert('Success', 'Class submitted for admin approval!');
       }
       
       router.back();
     } catch (error) {
       console.error('Error publishing class:', error);
+      setIsSaving(false);
       Alert.alert('Error', 'Failed to publish class. Please try again.');
     }
   };
@@ -447,6 +625,12 @@ export default function AddClassScreen() {
   const handleLogout = () => {
     // Logout handled by main instructor layout drawer
   };
+
+  // Check if all booking policies are filled
+  const areAllBookingPoliciesFilled = 
+    customTerms.trim() !== '' && 
+    customRequirements.length > 0 && 
+    customCancellation.trim() !== '';
 
 
   const handleBookingOptionPress = (option: string) => {
@@ -473,6 +657,15 @@ export default function AddClassScreen() {
 
   const closeCancellationModal = () => {
     setCancellationModalVisible(false);
+  };
+
+  const handleSaveCancellationPolicy = (policy: string, policyHeading?: string) => {
+    setCustomCancellation(policy);
+    setCancellationPolicyHeading(policyHeading || '');
+  };
+
+  const handleSaveTermsConditions = (terms: string) => {
+    setCustomTerms(terms);
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -569,36 +762,91 @@ export default function AddClassScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Image Upload Section */}
-        <Pressable 
-          style={[styles.imageUploadContainer, selectedImage && styles.imageUploadContainerWithImage]} 
-          onPress={handleImageUpload}
-          disabled={isUploadingImage}
-        >
-          {selectedImage ? (
-            <>
-              <Image
-                source={{ uri: selectedImage }}
-                style={styles.uploadedImage}
-                resizeMode="cover"
-              />
-              <View style={styles.changeImageOverlay}>
-                <Text style={styles.changeImageText}>Tap to change image</Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <Image
-                source={require('@/assets/images/upload1.png')}
-                style={styles.uploadIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.uploadText}>
-                {isUploadingImage ? 'Uploading...' : 'Upload an image'}
-              </Text>
-            </>
-          )}
-        </Pressable>
+        {/* Main Image Upload Section */}
+        <View style={styles.imageSection}>
+          <Text style={styles.imageSectionTitle}>Main Image <Text style={styles.required}>*</Text></Text>
+          <Text style={styles.imageSectionSubtitle}>This will be the primary image displayed first</Text>
+          <Pressable 
+            style={[styles.mainImageUploadContainer, mainImage && styles.imageUploadContainerWithImage]} 
+            onPress={handleMainImageUpload}
+            disabled={isUploadingImage}
+          >
+            {mainImage ? (
+              <>
+                <Image
+                  source={{ uri: mainImage }}
+                  style={styles.uploadedImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.changeImageOverlay}>
+                  <Text style={styles.changeImageText}>Tap to change image</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Image
+                  source={require('@/assets/images/upload1.png')}
+                  style={styles.uploadIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.uploadText}>
+                  {isUploadingImage ? 'Uploading...' : 'Upload main image'}
+                </Text>
+              </>
+            )}
+          </Pressable>
+
+          {/* Sub Images Upload Section - Horizontal Row */}
+          <View style={styles.subImagesSection}>
+            <Text style={styles.subImagesSectionTitle}>Additional Images <Text style={styles.required}>* (At least 1)</Text></Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.subImagesScrollView}
+              contentContainerStyle={styles.subImagesContainer}
+            >
+              {subImages.map((image, index) => (
+                <Pressable 
+                  key={index}
+                  style={[styles.subImageUploadContainer, image && styles.imageUploadContainerWithImage]} 
+                  onPress={() => handleSubImageUpload(index)}
+                  disabled={isUploadingImage}
+                >
+                  {image ? (
+                    <>
+                      <Image
+                        source={{ uri: image }}
+                        style={styles.subUploadedImage}
+                        resizeMode="cover"
+                      />
+                    <Pressable 
+                      style={styles.removeImageButtonContainer}
+                      onPress={() => removeSubImage(index)}
+                    >
+                      <LinearGradient
+                        colors={['#F708F7', '#C708F7', '#F76B0B']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.removeImageButton}
+                      >
+                        <Text style={styles.removeImageText}>✕</Text>
+                      </LinearGradient>
+                    </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <Image
+                        source={require('@/assets/images/upload1.png')}
+                        style={styles.subUploadIcon}
+                        resizeMode="contain"
+                      />
+                    </>
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
 
         {/* Class Information Form */}
         <View style={styles.formSection}>
@@ -715,18 +963,42 @@ export default function AddClassScreen() {
 
         {/* Booking Section */}
         <View style={styles.bookingSection}>
-          <Text style={styles.sectionTitle}>Booking</Text>
+          <Text style={styles.sectionTitle}>Booking Policies</Text>
+          
+      
+
           <View style={styles.bookingCard}>
             <Pressable style={styles.bookingItem} onPress={() => handleBookingOptionPress('terms')}>
-              <Text style={styles.bookingItemText}>Terms and Conditions</Text>
+              <View style={styles.bookingItemContent}>
+                <Text style={styles.bookingItemText}>Terms and Conditions</Text>
+                {customTerms ? (
+                  <Text style={styles.bookingItemSubtext}>✓ Added</Text>
+                ) : (
+                  <Text style={[styles.bookingItemSubtext, styles.notAddedText]}>Not added</Text>
+                )}
+              </View>
             </Pressable>
             <View style={styles.bookingDivider} />
             <Pressable style={styles.bookingItem} onPress={() => handleBookingOptionPress('requirements')}>
-              <Text style={styles.bookingItemText}>Guest requirements</Text>
+              <View style={styles.bookingItemContent}>
+                <Text style={styles.bookingItemText}>Guest requirements</Text>
+                {customRequirements.length > 0 ? (
+                  <Text style={styles.bookingItemSubtext}>✓ Added</Text>
+                ) : (
+                  <Text style={[styles.bookingItemSubtext, styles.notAddedText]}>Not added</Text>
+                )}
+              </View>
             </Pressable>
             <View style={styles.bookingDivider} />
             <Pressable style={styles.bookingItem} onPress={() => handleBookingOptionPress('cancellation')}>
-              <Text style={styles.bookingItemText}>Cancellation policy</Text>
+              <View style={styles.bookingItemContent}>
+                <Text style={styles.bookingItemText}>Cancellation policy</Text>
+                {customCancellation ? (
+                  <Text style={styles.bookingItemSubtext}>✓ Added</Text>
+                ) : (
+                  <Text style={[styles.bookingItemSubtext, styles.notAddedText]}>Not added</Text>
+                )}
+              </View>
             </Pressable>
           </View>
         </View>
@@ -747,12 +1019,16 @@ export default function AddClassScreen() {
               </LinearGradient>
             </Pressable>
           )}
-          <Pressable style={styles.publishButton} onPress={handlePublish}>
+          <Pressable 
+            style={[styles.publishButton, !areAllBookingPoliciesFilled && styles.publishButtonDisabled]} 
+            onPress={handlePublish}
+            disabled={!areAllBookingPoliciesFilled}
+          >
             <LinearGradient
-              colors={['#F708F7', '#C708F7', '#F76B0B']}
+              colors={areAllBookingPoliciesFilled ? ['#F708F7', '#C708F7', '#F76B0B'] : ['#CCCCCC', '#999999', '#CCCCCC']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.publishButtonGradient}
+              style={[styles.publishButtonGradient, !areAllBookingPoliciesFilled && styles.publishButtonGradientDisabled]}
             >
               <Text style={styles.publishButtonText}>
                 {isEditMode && isDraftStatus ? 'Publish' : isEditMode ? 'Update' : 'Publish'}
@@ -763,204 +1039,30 @@ export default function AddClassScreen() {
       </ScrollView>
 
 
-      {/* Terms and Conditions Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
+      {/* Terms and Conditions Bottom Sheet */}
+      <TermsConditionsSheet
         visible={termsModalVisible}
-        onRequestClose={closeTermsModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Terms and Conditions</Text>
-              <Pressable style={styles.closeButton} onPress={closeTermsModal}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </Pressable>
-            </View>
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalText}>
-                1. CLASS BOOKING{'\n'}
-                • All classes must be booked in advance through our platform{'\n'}
-                • Bookings are confirmed upon payment receipt{'\n'}
-                • Class capacity is limited and subject to availability{'\n\n'}
+        onClose={closeTermsModal}
+        onSave={handleSaveTermsConditions}
+        initialTerms={customTerms}
+      />
 
-                2. PAYMENT TERMS{'\n'}
-                • Payment is required at the time of booking{'\n'}
-                • Refunds are subject to our cancellation policy{'\n'}
-                • Prices may vary for subscribers vs non-subscribers{'\n\n'}
-
-                3. ATTENDANCE{'\n'}
-                • Students must arrive 10 minutes before class start time{'\n'}
-                • Late arrivals may not be admitted after class begins{'\n'}
-                • No-shows will be charged the full class fee{'\n\n'}
-
-                4. CONDUCT{'\n'}
-                • Respectful behavior is required at all times{'\n'}
-                • Follow instructor directions and safety guidelines{'\n'}
-                • No recording or photography without permission{'\n\n'}
-
-                5. HEALTH & SAFETY{'\n'}
-                • Inform instructor of any injuries or health conditions{'\n'}
-                • Follow all safety protocols and guidelines{'\n'}
-                • Use of facilities is at your own risk{'\n\n'}
-
-                6. MODIFICATIONS{'\n'}
-                • We reserve the right to modify class schedules{'\n'}
-                • Changes will be communicated with 24-hour notice{'\n'}
-                • Alternative arrangements will be provided when possible
-              </Text>
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <Pressable style={styles.doneButton} onPress={closeTermsModal}>
-                <LinearGradient
-                  colors={['#F708F7', '#C708F7', '#F76B0B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.doneButtonGradient}
-                >
-                  <Text style={styles.doneButtonText}>Done</Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Guest Requirements Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
+      {/* Guest Requirements Bottom Sheet */}
+      <GuestRequirementSheet
         visible={requirementsModalVisible}
-        onRequestClose={closeRequirementsModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Guest Requirements</Text>
-              <Pressable style={styles.closeButton} onPress={closeRequirementsModal}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </Pressable>
-            </View>
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalText}>
-                1. AGE REQUIREMENTS{'\n'}
-                • Minimum age: 16 years old{'\n'}
-                • Parental consent required for students under 18{'\n'}
-                • Adult supervision required for minors{'\n\n'}
+        onClose={closeRequirementsModal}
+        onSave={(requirements) => setCustomRequirements(requirements)}
+        initialRequirements={customRequirements}
+      />
 
-                2. SKILL LEVEL{'\n'}
-                • Classes are designed for specific skill levels{'\n'}
-                • Please select appropriate difficulty level{'\n'}
-                • Beginners welcome in designated classes{'\n\n'}
-
-                3. ATTIRE & EQUIPMENT{'\n'}
-                • Comfortable dance attire required{'\n'}
-                • Appropriate footwear (dance shoes recommended){'\n'}
-                • Water bottle recommended{'\n'}
-                • No loose jewelry or accessories{'\n\n'}
-
-                4. HEALTH REQUIREMENTS{'\n'}
-                • Good physical condition recommended{'\n'}
-                • Inform instructor of any injuries or limitations{'\n'}
-                • Medical clearance may be required for certain classes{'\n\n'}
-
-                5. REGISTRATION{'\n'}
-                • Valid ID required for first-time students{'\n'}
-                • Emergency contact information must be provided{'\n'}
-                • Waiver forms must be completed before participation{'\n\n'}
-
-                6. BEHAVIOR EXPECTATIONS{'\n'}
-                • Respectful and positive attitude{'\n'}
-                • Follow instructor directions{'\n'}
-                • Maintain appropriate personal space{'\n'}
-                • No disruptive behavior will be tolerated
-              </Text>
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <Pressable style={styles.doneButton} onPress={closeRequirementsModal}>
-                <LinearGradient
-                  colors={['#F708F7', '#C708F7', '#F76B0B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.doneButtonGradient}
-                >
-                  <Text style={styles.doneButtonText}>Done</Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Cancellation Policy Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
+      {/* Cancellation Policy Bottom Sheet */}
+      <CancellationPolicySheet
         visible={cancellationModalVisible}
-        onRequestClose={closeCancellationModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Cancellation Policy</Text>
-              <Pressable style={styles.closeButton} onPress={closeCancellationModal}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </Pressable>
-            </View>
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalText}>
-                1. CANCELLATION TIME FRAMES{'\n'}
-                • 24+ hours notice: Full refund or credit{'\n'}
-                • 12-24 hours notice: 50% refund or credit{'\n'}
-                • Less than 12 hours: No refund, credit may be offered{'\n\n'}
-
-                2. REFUND PROCESS{'\n'}
-                • Refunds processed within 5-7 business days{'\n'}
-                • Original payment method will be used{'\n'}
-                • Processing fees may apply{'\n\n'}
-
-                3. CREDIT OPTIONS{'\n'}
-                • Class credits valid for 6 months{'\n'}
-                • Transferable to other class types{'\n'}
-                • No expiration for emergency situations{'\n\n'}
-
-                4. EMERGENCY CANCELLATIONS{'\n'}
-                • Medical emergencies: Full refund or credit{'\n'}
-                • Weather-related cancellations: Full refund{'\n'}
-                • Instructor illness: Alternative class or refund{'\n\n'}
-
-                5. NO-SHOW POLICY{'\n'}
-                • No-shows forfeit class payment{'\n'}
-                • No credits or refunds for no-shows{'\n'}
-                • Repeated no-shows may result in booking restrictions{'\n\n'}
-
-                6. MODIFICATION REQUESTS{'\n'}
-                • Class changes subject to availability{'\n'}
-                • 24-hour notice required for modifications{'\n'}
-                • Additional fees may apply for last-minute changes{'\n\n'}
-
-                7. SPECIAL CIRCUMSTANCES{'\n'}
-                • Contact us immediately for special situations{'\n'}
-                • We will work with you to find solutions{'\n'}
-                • Case-by-case basis for unique circumstances
-              </Text>
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <Pressable style={styles.doneButton} onPress={closeCancellationModal}>
-                <LinearGradient
-                  colors={['#F708F7', '#C708F7', '#F76B0B']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.doneButtonGradient}
-                >
-                  <Text style={styles.doneButtonText}>Done</Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={closeCancellationModal}
+        onSave={handleSaveCancellationPolicy}
+        initialPolicy={customCancellation}
+        initialPolicyHeading={cancellationPolicyHeading}
+      />
 
       {/* Date Picker Modal */}
       <Modal
@@ -978,14 +1080,25 @@ export default function AddClassScreen() {
               </Pressable>
             </View>
             <View style={styles.pickerModalContent}>
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleDateChange}
-                minimumDate={new Date()}
-                style={styles.dateTimePicker}
-              />
+              {Platform.OS === 'ios' ? (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  minimumDate={new Date()}
+                  themeVariant="light"
+                  textColor="#000000"
+                />
+              ) : (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="default"
+                  onChange={handleDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
             </View>
             <View style={styles.pickerModalFooter}>
               <Pressable style={styles.pickerDoneButton} onPress={closeDatePicker}>
@@ -1019,13 +1132,23 @@ export default function AddClassScreen() {
               </Pressable>
             </View>
             <View style={styles.pickerModalContent}>
-              <DateTimePicker
-                value={selectedTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleTimeChange}
-                style={styles.dateTimePicker}
-              />
+              {Platform.OS === 'ios' ? (
+                <DateTimePicker
+                  value={selectedTime}
+                  mode="time"
+                  display="spinner"
+                  onChange={handleTimeChange}
+                  themeVariant="light"
+                  textColor="#000000"
+                />
+              ) : (
+                <DateTimePicker
+                  value={selectedTime}
+                  mode="time"
+                  display="default"
+                  onChange={handleTimeChange}
+                />
+              )}
             </View>
             <View style={styles.pickerModalFooter}>
               <Pressable style={styles.pickerDoneButton} onPress={closeTimePicker}>
@@ -1039,6 +1162,31 @@ export default function AddClassScreen() {
                 </LinearGradient>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Beautiful Loading Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isSaving}
+        onRequestClose={() => {}}
+      >
+        <View style={styles.loadingModalOverlay}>
+          <View style={styles.loadingModalContainer}>
+            <LinearGradient
+              colors={['#F708F7', '#C708F7', '#F76B0B']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.loadingGradient}
+            >
+              <View style={styles.loadingContent}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text style={styles.loadingTitle}>Saving Your Class</Text>
+                <Text style={styles.loadingSubtitle}>Please wait while we upload your images and save your listing...</Text>
+              </View>
+            </LinearGradient>
           </View>
         </View>
       </Modal>
@@ -1063,13 +1211,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    right:10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backIcon: {
     width: 24,
     height: 24,
-    tintColor: '#000000',
   },
   headerTitle: {
     fontSize: 20,
@@ -1087,7 +1237,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   // Image upload styles
-  imageUploadContainer: {
+  imageSection: {
+    marginBottom: 24,
+  },
+  imageSectionTitle: {
+    fontSize: 16,
+    fontFamily: Fonts.bold,
+    color: '#000000',
+    marginBottom: 4,
+  },
+  imageSectionSubtitle: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+    marginBottom: 12,
+  },
+  required: {
+    color: '#FF0000',
+  },
+  mainImageUploadContainer: {
     height: 200,
     borderWidth: 2,
     borderColor: '#E0E0E0',
@@ -1096,14 +1264,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FAFAFA',
-    marginVertical: 20,
     overflow: 'hidden',
+  },
+  subImagesSection: {
+    marginTop: 16,
+  },
+  subImagesSectionTitle: {
+    fontSize: 14,
+    fontFamily: Fonts.semiBold,
+    color: '#000000',
+    marginBottom: 8,
+  },
+  subImagesScrollView: {
+    flexGrow: 0,
+  },
+  subImagesContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  subImageUploadContainer: {
+    width: 80,
+    height: 80,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    overflow: 'hidden',
+    position: 'relative',
   },
   imageUploadContainerWithImage: {
     borderStyle: 'solid',
     borderColor: '#8A53C2',
   },
   uploadedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  subUploadedImage: {
     width: '100%',
     height: '100%',
   },
@@ -1121,13 +1321,45 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.medium,
     color: '#FFFFFF',
   },
+  removeImageButtonContainer: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    overflow: 'hidden',
+    zIndex: 10,
+  },
+  removeImageButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeImageText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: Fonts.bold,
+  },
   uploadIcon: {
     width: 50,
     height: 50,
     marginBottom: 8,
   },
+  subUploadIcon: {
+    width: 24,
+    height: 24,
+    marginBottom: 2,
+  },
   uploadText: {
     fontSize: 16,
+    fontFamily: Fonts.medium,
+    color: '#666666',
+  },
+  subUploadText: {
+    fontSize: 10,
     fontFamily: Fonts.medium,
     color: '#666666',
   },
@@ -1231,6 +1463,32 @@ const styles = StyleSheet.create({
   bookingSection: {
     marginBottom: 30,
   },
+  toggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    padding: 16,
+    marginBottom: 16,
+  },
+  toggleLabelContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontFamily: Fonts.semiBold,
+    color: '#000000',
+    marginBottom: 4,
+  },
+  toggleSubtext: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+  },
   bookingCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
@@ -1242,10 +1500,23 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
   },
+  bookingItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   bookingItemText: {
     fontSize: 16,
     fontFamily: Fonts.medium,
     color: '#000000',
+  },
+  bookingItemSubtext: {
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+    color: '#8A53C2',
+  },
+  notAddedText: {
+    color: '#999999',
   },
   bookingDivider: {
     height: 1,
@@ -1280,13 +1551,20 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     overflow: 'hidden',
   },
+  publishButtonDisabled: {
+    opacity: 0.6,
+  },
   publishButtonGradient: {
     paddingVertical: 16,
     alignItems: 'center',
   },
+  publishButtonGradientDisabled: {
+    opacity: 1,
+  },
   publishButtonText: {
     fontSize: 16,
-fontWeight:'bold',    color: '#FFFFFF',
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   // Modal styles
   modalOverlay: {
@@ -1344,6 +1622,20 @@ fontWeight:'bold',    color: '#FFFFFF',
     color: '#333333',
     lineHeight: 22,
   },
+  modalLabel: {
+    fontSize: 14,
+    fontFamily: Fonts.semiBold,
+    color: '#000000',
+    marginBottom: 12,
+  },
+  modalTextArea: {
+    height: 300,
+    textAlignVertical: 'top',
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
   modalFooter: {
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -1390,13 +1682,13 @@ fontWeight:'bold',    color: '#FFFFFF',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     marginHorizontal: 20,
-    maxHeight: '60%',
     width: width - 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 10,
+    overflow: 'hidden',
   },
   pickerModalHeader: {
     flexDirection: 'row',
@@ -1413,9 +1705,11 @@ fontWeight:'bold',    color: '#FFFFFF',
     color: '#000000',
   },
   pickerModalContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 0,
+    paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 200,
   },
   pickerModalFooter: {
     paddingHorizontal: 20,
@@ -1436,8 +1730,43 @@ fontWeight:'bold',    color: '#FFFFFF',
     fontFamily: Fonts.bold,
     color: '#FFFFFF',
   },
-  dateTimePicker: {
-    width: '100%',
-    height: 200,
+  // Loading modal styles
+  loadingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingModalContainer: {
+    width: width - 80,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  loadingGradient: {
+    padding: 40,
+  },
+  loadingContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontFamily: Fonts.bold,
+    color: '#FFFFFF',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    fontFamily: Fonts.regular,
+    color: '#FFFFFF',
+    marginTop: 10,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

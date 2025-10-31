@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { get, onValue, ref, remove } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Import SVG components
@@ -31,14 +31,24 @@ interface ClassListing {
   date: string;
   time: string;
   location: string;
-  status: 'draft' | 'published' | 'pending' | 'approved' | 'rejected';
+  status: 'draft' | 'published' | 'pending' | 'Published' | 'rejected';
   createdAt: string;
   instructorId: string;
   instructorName: string;
   imageUrl: string;
+  mainImage?: string;
+  subImage1?: string;
+  subImage2?: string;
+  subImage3?: string;
+  subImage4?: string;
   rating?: number;
   subscribers?: number;
   availability?: number;
+  customTerms?: string;
+  customRequirements?: string;
+  customCancellation?: string;
+  cancellationPolicyHeading?: string;
+  termsEnabled?: boolean;
   reviews?: Review[];
 }
 
@@ -91,6 +101,10 @@ export default function InstructorHomeScreen() {
   const [userBookings, setUserBookings] = useState<UserBooking[]>([]);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [classReviews, setClassReviews] = useState<{[classId: string]: Review[]}>({});
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchAnim = React.useRef(new Animated.Value(0)).current; // 0: closed, 1: open
+  const searchInputRef = React.useRef<TextInput>(null);
 
   // Function to fetch reviews for a specific class
   const fetchReviewsForClass = async (classId: string) => {
@@ -146,6 +160,17 @@ export default function InstructorHomeScreen() {
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
+      let profileLoaded = false;
+      let listingsLoaded = false;
+      let draftsLoaded = false;
+      let ordersLoaded = false;
+
+      const checkAllLoaded = () => {
+        if (profileLoaded && listingsLoaded && draftsLoaded && ordersLoaded) {
+          setIsLoading(false);
+        }
+      };
+
       // Fetch instructor profile
       const userRef = ref(database, `users/${user.uid}/personalInfo`);
       const unsubscribeProfile = onValue(userRef, (snapshot) => {
@@ -153,6 +178,8 @@ export default function InstructorHomeScreen() {
         if (data) {
           setInstructorProfile(data);
         }
+        profileLoaded = true;
+        checkAllLoaded();
       });
 
       // Fetch published listings from user's personal listings
@@ -180,6 +207,8 @@ export default function InstructorHomeScreen() {
         } else {
           setListings([]);
         }
+        listingsLoaded = true;
+        checkAllLoaded();
       });
 
       // Fetch draft listings
@@ -207,6 +236,8 @@ export default function InstructorHomeScreen() {
         } else {
           setDraftListings([]);
         }
+        draftsLoaded = true;
+        checkAllLoaded();
       });
 
       // Fetch user bookings (orders)
@@ -226,9 +257,9 @@ export default function InstructorHomeScreen() {
         } else {
           setUserBookings([]);
         }
+        ordersLoaded = true;
+        checkAllLoaded();
       });
-
-      setIsLoading(false);
 
       return () => {
         unsubscribeProfile();
@@ -379,10 +410,38 @@ export default function InstructorHomeScreen() {
 
   const handleAddPress = () => {
     console.log('Add pressed');
+    handleCreateClass();
   };
 
   const handleSearchPress = () => {
     console.log('Search pressed');
+    if (!isSearchVisible) {
+      // Prepare initial state before animating open
+      searchAnim.stopAnimation();
+      searchAnim.setValue(0);
+      setIsSearchVisible(true);
+      Animated.timing(searchAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: false,
+      }).start(() => {
+        // Focus the input after opening animation starts/finishes to avoid flash
+        searchInputRef.current?.focus();
+      });
+    } else {
+      // Blur before closing to dismiss keyboard smoothly
+      searchInputRef.current?.blur();
+      searchAnim.stopAnimation();
+      Animated.timing(searchAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        if (finished) {
+          setIsSearchVisible(false);
+        }
+      });
+    }
   };
 
   const handleNotificationPress = () => {
@@ -408,7 +467,16 @@ export default function InstructorHomeScreen() {
       time: listing.time,
       location: listing.location,
       imageUrl: listing.imageUrl,
+      mainImage: listing.mainImage || listing.imageUrl || '',
+      subImage1: listing.subImage1 || '',
+      subImage2: listing.subImage2 || '',
+      subImage3: listing.subImage3 || '',
+      subImage4: listing.subImage4 || '',
       status: listing.status,
+      customTerms: listing.customTerms || '',
+      customRequirements: listing.customRequirements || '',
+      customCancellation: listing.customCancellation || '',
+      cancellationPolicyHeading: listing.cancellationPolicyHeading || '',
     });
   };
 
@@ -573,7 +641,7 @@ export default function InstructorHomeScreen() {
         return HipHop;
       case 'jazz':
         return Jazz;
-      case 'salsa':
+      case 'belly':
         return Salsa;
       case 'swing':
         return Swing;
@@ -630,7 +698,7 @@ export default function InstructorHomeScreen() {
             {listing.status === 'draft' ? 'Draft' :
              listing.status === 'pending' ? 'Pending' :
              listing.status === 'rejected' ? 'Rejected' :
-             listing.status === 'approved' ? 'Approved' : 'Published'}
+             listing.status === 'Published' ? 'Published' : 'Published'}
           </Text>
         </View>
       </View>
@@ -771,7 +839,15 @@ export default function InstructorHomeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <LinearGradient
+            colors={['#F708F7', '#C708F7', '#F76B0B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.loadingGradient}
+          >
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Loading your classes...</Text>
+          </LinearGradient>
         </View>
       </SafeAreaView>
     );
@@ -789,6 +865,31 @@ export default function InstructorHomeScreen() {
           />
         </Pressable>
         <View style={styles.headerRight}>
+          <Animated.View
+            pointerEvents={isSearchVisible ? 'auto' : 'none'}
+            style={[
+              styles.searchContainer,
+              {
+                width: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, width * 0.35] }),
+                opacity: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
+                transform: [
+                  {
+                    translateX: searchAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <TextInput
+              ref={searchInputRef}
+              placeholder="Search classes..."
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+              // no autoFocus to avoid mounting flash; focus is controlled imperatively
+            />
+          </Animated.View>
           <Pressable style={styles.headerIcon} onPress={handleAddPress}>
             <Image
               source={require('@/assets/images/insAdd.png')}
@@ -916,11 +1017,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingGradient: {
+    paddingVertical: 40,
+    paddingHorizontal: 60,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
   },
   loadingText: {
     fontSize: 16,
-    fontFamily: Fonts.regular,
-    color: '#666666',
+    fontFamily: Fonts.medium,
+    color: '#FFFFFF',
+    marginTop: 8,
   },
   // Header styles
   header: {
@@ -941,13 +1052,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  searchContainer: {
+    height: 36,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    marginRight: 8,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  searchInput: {
+    paddingHorizontal: 10,
+    fontFamily: Fonts.regular,
+    color: '#000',
+    fontSize: 14,
+  },
   headerIcon: {
     padding: 8,
   },
   headerIconImage: {
-    width: 43,
-    height: 43,
-    marginRight:-10,
+    width: 36,
+    height: 36,
+    marginRight: -6,
   },
   // Content styles
   content: {

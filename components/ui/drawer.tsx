@@ -1,23 +1,27 @@
 import { Fonts } from '@/constants/theme';
+import { auth, database } from '@/firebase.config';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Dimensions,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import Animated, {
-    interpolate,
-    interpolateColor,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  interpolate,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ProfileAvatar from './profile-avatar';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,6 +42,27 @@ const Drawer: React.FC<DrawerProps> = ({
   const opacity = useSharedValue(0);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const toggleAnimation = useSharedValue(0);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Fetch user profile data
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      const userRef = ref(database, `users/${user.uid}/personalInfo`);
+      const unsubscribe = onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setUserProfile(data);
+          // Use profileImageUrl first, fallback to profileImageUri
+          setProfileImageUrl(data.profileImageUrl || data.profileImageUri || null);
+        }
+      });
+
+      return () => unsubscribe();
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -115,8 +140,13 @@ const Drawer: React.FC<DrawerProps> = ({
   ];
 
   return (
-    <Animated.View style={[styles.overlay, overlayAnimatedStyle]}>
-      <Pressable style={styles.overlayPressable} onPress={handleOverlayPress} />
+    <Animated.View style={[styles.overlay, overlayAnimatedStyle]} pointerEvents="box-none">
+      {/* Make overlay only cover the outside area (right 25% of the screen), not the drawer */}
+      <Pressable 
+        style={[styles.overlayPressable, { left: width * 0.75, right: 0 }]} 
+        onPress={handleOverlayPress} 
+        pointerEvents="auto" 
+      />
       <Animated.View style={[styles.drawer, drawerAnimatedStyle]}>
         <SafeAreaView style={styles.container}>
 
@@ -129,16 +159,33 @@ const Drawer: React.FC<DrawerProps> = ({
           >
             <View style={styles.profileRow}>
               <View style={styles.profileImageContainer}>
-                <Image
-                  source={require('@/assets/images/annie-bens.png')}
+                <ProfileAvatar
+                  imageUrl={profileImageUrl}
+                  fullName={userProfile?.fullName || 'User'}
+                  size={75}
                   style={styles.profileImage}
-                  resizeMode="cover"
                 />
                 <View style={styles.profileBorder} />
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.userName}>Jhon Dea</Text>
-                <Pressable style={styles.editProfileButton}>
+                <Text style={styles.userName}>{userProfile?.fullName || 'User'}</Text>
+                <Pressable 
+                  style={styles.editProfileButton}
+                  onPress={() => {
+                    console.log('Drawer: Edit Profile pressed (student)');
+                    if (!userProfile) return;
+                    router.push({
+                      pathname: '/(onboarding)/profile-info',
+                      params: {
+                        country: userProfile.country || '',
+                        state: userProfile.state || '',
+                        city: userProfile.city || '',
+                        profileImageUrl: userProfile.profileImageUrl || userProfile.profileImageUri || '',
+                      }
+                    });
+                    onClose();
+                  }}
+                >
                   <LinearGradient
                     colors={['#F708F7', '#C708F7']}
                     start={{ x: 0, y: 0 }}
@@ -255,7 +302,7 @@ const styles = StyleSheet.create({
   profileImage: {
     width: 75,
     height: 75,
-    borderRadius: 35,
+    borderRadius: 100,
     borderColor:'#C708F7',
     borderWidth:1,
     padding:2,

@@ -5,23 +5,93 @@ import FilterModal, { FilterOptions } from '@/components/ui/filter-modal';
 import GradientBackground from '@/components/ui/gradient-background';
 import SearchBar from '@/components/ui/search-bar';
 import { Fonts } from '@/constants/theme';
+import { auth, database } from '@/firebase.config';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { get, ref } from 'firebase/database';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeIndexScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { id } = useLocalSearchParams();
+  
+  console.log('🟢 HOME INDEX: Component rendered, id param:', id);
   
   // State for search, category, and filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filters, setFilters] = useState<FilterOptions>({});
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [checkingDatabase, setCheckingDatabase] = useState(true);
+
+  // Check database for selectedClassId on every mount
+  useEffect(() => {
+    const checkNavigationState = async () => {
+      try {
+        setCheckingDatabase(true);
+        const user = auth.currentUser;
+        
+        if (!user) {
+          setCheckingDatabase(false);
+          return;
+        }
+
+        const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+        
+        // Use get to read once
+        const snapshot = await get(navigationStateRef);
+        
+        if (snapshot.exists()) {
+          const classId = snapshot.val();
+          console.log('🟢 HOME INDEX: Found selectedClassId in database:', classId);
+          setIsRedirecting(true);
+          
+          // Navigate to class-details using navigation API - class-details.tsx will remove the ID after 1 second
+          (navigation as any).navigate('Tabs', {
+            screen: 'home',
+            params: {
+              screen: 'class-details',
+              params: { id: classId },
+            },
+          });
+        } else {
+          console.log('🟢 HOME INDEX: No selectedClassId found in database, staying on home');
+          setIsRedirecting(false);
+        }
+      } catch (error) {
+        console.error('Error checking navigation state:', error);
+        setIsRedirecting(false);
+      } finally {
+        setCheckingDatabase(false);
+      }
+    };
+
+    // Also check URL param id for backwards compatibility
+    if (id && !isRedirecting) {
+      console.log('🟢 HOME INDEX: Redirecting to class-details with id param:', id);
+      setIsRedirecting(true);
+      setCheckingDatabase(false);
+      (navigation as any).navigate('Tabs', {
+        screen: 'home',
+        params: {
+          screen: 'class-details',
+          params: { id },
+        },
+      });
+    } else if (!id) {
+      // Check database if no URL param - check on every mount
+      checkNavigationState();
+    } else {
+      setCheckingDatabase(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only depend on id, not isRedirecting
   
   const handleMenuPress = undefined; // AppHeader opens drawer via navigation
 
@@ -147,6 +217,26 @@ export default function HomeIndexScreen() {
     // Add logout logic here
   };
 
+  console.log('🟢 HOME INDEX: About to render, isRedirecting:', isRedirecting, 'checkingDatabase:', checkingDatabase);
+  
+  // Show loader while checking database
+  if (checkingDatabase) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <GradientBackground>
+          <SafeAreaView style={styles.safeArea}>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#8A53C2" />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          </SafeAreaView>
+        </GradientBackground>
+      </GestureHandlerRootView>
+    );
+  }
+
+  console.log('🟢 HOME INDEX: Rendering home screen');
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GradientBackground>
@@ -395,5 +485,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Fonts.semiBold,
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: Fonts.medium,
+    color: '#FFFFFF',
+    marginTop: 16,
   },
 });

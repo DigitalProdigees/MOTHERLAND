@@ -1,6 +1,7 @@
 import { get, ref, set } from 'firebase/database';
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import booking2Icon from '../assets/images/booking2.png';
 import ConfirmModal from '../components/ConfirmModal';
 import SuccessModal from '../components/SuccessModal';
 import { database } from '../firebase.config';
@@ -10,13 +11,25 @@ function UsersListing() {
   const navigate = useNavigate();
   const location = useLocation();
   const initialInstructor = location.state?.instructor;
-  const [instructor, setInstructor] = useState(initialInstructor);
+  // Normalize profile picture field to prefer URL, then legacy/local fields
+  const normalizedInstructor = initialInstructor
+    ? {
+        ...initialInstructor,
+        profilePicture:
+          initialInstructor.profileImageUrl ||
+          initialInstructor.profilePicture ||
+          initialInstructor.profileImageUri ||
+          ''
+      }
+    : null;
+  const [instructor, setInstructor] = useState(normalizedInstructor);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [expandedListing, setExpandedListing] = useState(null);
+  const [expandedPolicies, setExpandedPolicies] = useState({}); // Track expanded policies by listing ID
 
   const handleApproveListing = async (listing) => {
     try {
@@ -148,6 +161,13 @@ function UsersListing() {
 
   const toggleListingExpansion = (listingId) => {
     setExpandedListing(expandedListing === listingId ? null : listingId);
+  };
+
+  const togglePoliciesExpansion = (listingId) => {
+    setExpandedPolicies(prev => ({
+      ...prev,
+      [listingId]: !prev[listingId]
+    }));
   };
 
   if (!instructor) {
@@ -347,6 +367,55 @@ function UsersListing() {
                         <div className="listing-description-box">
                           <h5>Description</h5>
                           <p>{listing.description}</p>
+                        </div>
+                      )}
+
+                      {/* Booking Policies Section */}
+                      {(listing.customTerms || listing.customRequirements || listing.customCancellation) && (
+                        <div className="booking-policies-container">
+                          <button 
+                            className="policies-toggle-button"
+                            onClick={() => togglePoliciesExpansion(listing.id)}
+                          >
+                            <span className="policies-toggle-title">
+                              <img 
+                                src={booking2Icon} 
+                                alt="Booking Policies"
+                                className="policies-icon"
+                              />
+                              Booking Policies
+                            </span>
+                            <span className="policies-toggle-icon">
+                              {expandedPolicies[listing.id] ? '−' : '+'}
+                            </span>
+                          </button>
+                          
+                          {expandedPolicies[listing.id] && (
+                            <div className="booking-policies-section">
+                              {listing.customTerms && (
+                                <div className="policy-item">
+                                  <h6 className="policy-heading">Terms and Conditions</h6>
+                                  <p className="policy-content" style={{ whiteSpace: 'pre-line' }}>{listing.customTerms}</p>
+                                </div>
+                              )}
+                              
+                              {listing.customRequirements && (
+                                <div className="policy-item">
+                                  <h6 className="policy-heading">Guest Requirements</h6>
+                                  <p className="policy-content" style={{ whiteSpace: 'pre-line' }}>{listing.customRequirements}</p>
+                                </div>
+                              )}
+                              
+                              {listing.customCancellation && (
+                                <div className="policy-item">
+                                  <h6 className="policy-heading">
+                                    {listing.cancellationPolicyHeading ? listing.cancellationPolicyHeading : 'Cancellation Policy'}
+                                  </h6>
+                                  <p className="policy-content" style={{ whiteSpace: 'pre-line' }}>{listing.customCancellation}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 

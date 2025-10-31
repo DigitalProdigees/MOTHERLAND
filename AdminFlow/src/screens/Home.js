@@ -1,6 +1,7 @@
 import { get, onValue, ref, set } from 'firebase/database';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import booking2Icon from '../assets/images/booking2.png';
 import ConfirmModal from '../components/ConfirmModal';
 import { auth, database } from '../firebase.config';
 import './Home.css';
@@ -18,6 +19,7 @@ function Home() {
   const [showBanner, setShowBanner] = useState(false);
   const [bannerMessage, setBannerMessage] = useState('');
   const [bannerType, setBannerType] = useState('success'); // 'success' or 'error'
+  const [expandedPolicies, setExpandedPolicies] = useState({}); // Track expanded policies by listing ID
 
   const showBannerNotification = (message, type = 'success') => {
     setBannerMessage(message);
@@ -166,7 +168,8 @@ function Home() {
               uid: userId,
               name: user.personalInfo?.fullName || 'Unknown Instructor',
               email: user.personalInfo?.email || 'N/A',
-              profilePicture: user.personalInfo?.profilePicture || user.personalInfo?.profileImageUri || '',
+              // Prefer canonical URL field; fall back to legacy name and local URI
+              profilePicture: user.personalInfo?.profileImageUrl || user.personalInfo?.profilePicture || user.personalInfo?.profileImageUri || '',
               listings: listings
             };
             
@@ -216,12 +219,13 @@ function Home() {
             const instructorRef = ref(database, `users/${listing.instructorId}/personalInfo`);
             const instructorSnapshot = await get(instructorRef);
             const instructorData = instructorSnapshot.val();
-
+            
             pendingList.push({
               id: listingId,
               ...listing,
               instructorEmail: instructorData?.email || 'N/A',
-              instructorProfilePicture: instructorData?.profilePicture || instructorData?.profileImageUri || '',
+              // Prefer canonical URL field; fall back to legacy name and local URI
+              instructorProfilePicture: instructorData?.profileImageUrl || instructorData?.profilePicture || instructorData?.profileImageUri || '',
             });
           }
         }
@@ -328,6 +332,13 @@ function Home() {
   const handleRejectCancel = () => {
     setShowRejectModal(false);
     setSelectedListing(null);
+  };
+
+  const togglePoliciesExpansion = (listingId) => {
+    setExpandedPolicies(prev => ({
+      ...prev,
+      [listingId]: !prev[listingId]
+    }));
   };
 
   if (loading) {
@@ -477,6 +488,55 @@ function Home() {
                           <span className="detail-value">{listing.nonSubscriberPrice || listing.subscriberPrice || 'N/A'}</span>
                         </div>
                       </div>
+
+                      {/* Booking Policies Section */}
+                      {(listing.customTerms || listing.customRequirements || listing.customCancellation) && (
+                        <div className="booking-policies-container">
+                          <button 
+                            className="policies-toggle-button"
+                            onClick={() => togglePoliciesExpansion(listing.id)}
+                          >
+                            <span className="policies-toggle-title">
+                              <img 
+                                src={booking2Icon} 
+                                alt="Booking Policies"
+                                className="policies-icon"
+                              />
+                              Booking Policies
+                            </span>
+                            <span className="policies-toggle-icon">
+                              {expandedPolicies[listing.id] ? '−' : '+'}
+                            </span>
+                          </button>
+                          
+                          {expandedPolicies[listing.id] && (
+                            <div className="booking-policies-section">
+                              {listing.customTerms && (
+                                <div className="policy-item">
+                                  <h6 className="policy-heading">Terms and Conditions</h6>
+                                  <p className="policy-content" style={{ whiteSpace: 'pre-line' }}>{listing.customTerms}</p>
+                                </div>
+                              )}
+                              
+                              {listing.customRequirements && (
+                                <div className="policy-item">
+                                  <h6 className="policy-heading">Guest Requirements</h6>
+                                  <p className="policy-content" style={{ whiteSpace: 'pre-line' }}>{listing.customRequirements}</p>
+                                </div>
+                              )}
+                              
+                              {listing.customCancellation && (
+                                <div className="policy-item">
+                                  <h6 className="policy-heading">
+                                    {listing.cancellationPolicyHeading ? listing.cancellationPolicyHeading : 'Cancellation Policy'}
+                                  </h6>
+                                  <p className="policy-content" style={{ whiteSpace: 'pre-line' }}>{listing.customCancellation}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="pending-listing-actions">

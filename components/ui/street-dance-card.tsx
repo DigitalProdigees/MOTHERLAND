@@ -28,30 +28,6 @@ const StreetDanceCard: React.FC<StreetDanceCardProps> = ({
   category,
   onPress,
 }) => {
-  const getCategoryImage = (category: string) => {
-    switch (category?.toLowerCase()) {
-      case 'ballet':
-        return require('@/assets/svg/Ballet.jsx');
-      case 'hip-hop':
-      case 'hiphop':
-        return require('@/assets/svg/HipHop.jsx');
-      case 'jazz':
-        return require('@/assets/svg/Jazz.jsx');
-      case 'salsa':
-        return require('@/assets/svg/Salsa.jsx');
-      case 'swing':
-        return require('@/assets/svg/Swing.jsx');
-      case 'tap':
-        return require('@/assets/svg/Tap.jsx');
-      case 'modern':
-        return require('@/assets/svg/Modern.jsx');
-      case 'contemporary':
-        return require('@/assets/svg/Contemporary.jsx');
-      default:
-        return require('@/assets/svg/HipHop.jsx'); // Default fallback
-    }
-  };
-
   return (
     <Pressable
       style={({ pressed }) => [
@@ -70,12 +46,6 @@ const StreetDanceCard: React.FC<StreetDanceCardProps> = ({
         
         {/* Category Tag */}
         <View style={styles.hipHopTag}>
-          {React.createElement(getCategoryImage(category || 'hip-hop'), {
-            width: 30,
-            height: 30,
-            style: styles.hipHopIcon,
-            color: '#FFFFFF'
-          })}
           <Text style={styles.hipHopText}>{category || 'Hip-Hop'}</Text>
         </View>
       </View>
@@ -179,20 +149,14 @@ const styles = StyleSheet.create({
     left: 16,
     backgroundColor: 'rgba(81, 89, 97, 0.64)',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  hipHopIcon: {
-    width: 30,
-    height: 30,
-    tintColor: '#FFFFFF',
   },
   hipHopText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: Fonts.medium,
   },
   content: {

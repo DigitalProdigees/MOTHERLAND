@@ -1,23 +1,27 @@
 import { Fonts } from '@/constants/theme';
+import { auth, database } from '@/firebase.config';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { onValue, ref } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Dimensions,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import Animated, {
-    interpolate,
-    interpolateColor,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+  interpolate,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ProfileAvatar from './profile-avatar';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,6 +42,27 @@ const InstructorDrawer: React.FC<InstructorDrawerProps> = ({
   const opacity = useSharedValue(0);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const toggleAnimation = useSharedValue(0);
+  const [instructorProfile, setInstructorProfile] = useState<any>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Fetch instructor profile data
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      const userRef = ref(database, `users/${user.uid}/personalInfo`);
+      const unsubscribe = onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setInstructorProfile(data);
+          // Use profileImageUrl first, fallback to profileImageUri
+          setProfileImageUrl(data.profileImageUrl || data.profileImageUri || null);
+        }
+      });
+
+      return () => unsubscribe();
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -117,8 +142,14 @@ const InstructorDrawer: React.FC<InstructorDrawerProps> = ({
   ];
 
   return (
-    <Animated.View style={[styles.overlay, overlayAnimatedStyle]}>
-      <Pressable style={styles.overlayPressable} onPress={handleOverlayPress} />
+    <Animated.View style={[styles.overlay, overlayAnimatedStyle]} pointerEvents="box-none">
+      {/* Make overlay only cover the outside area, not the drawer */}
+      {/* Cover the outside area (right 25% of the screen) */}
+      <Pressable 
+        style={[styles.overlayPressable, { left: width * 0.75, right: 0 }]} 
+        onPress={handleOverlayPress} 
+        pointerEvents="auto" 
+      />
       <Animated.View style={[styles.drawer, drawerAnimatedStyle]}>
         <SafeAreaView style={styles.container}>
           {/* Header with close button */}
@@ -141,17 +172,25 @@ const InstructorDrawer: React.FC<InstructorDrawerProps> = ({
           >
             <View style={styles.profileRow}>
               <View style={styles.profileImageContainer}>
-                <Image
-                  source={require('@/assets/images/instructor.png')}
+                <ProfileAvatar
+                  imageUrl={profileImageUrl}
+                  fullName={instructorProfile?.fullName || 'Instructor'}
+                  size={75}
                   style={styles.profileImage}
-                  resizeMode="cover"
                 />
                 <View style={styles.profileBorder} />
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.userName}>Instructor Name</Text>
+                <Text style={styles.userName}>{instructorProfile?.fullName || 'Instructor'}</Text>
                 <Text style={styles.instructorBadge}>Dance Instructor</Text>
-                <Pressable style={styles.editProfileButton}>
+                <Pressable 
+                  style={styles.editProfileButton}
+                  onPress={() => {
+                    console.log('InstructorDrawer: Edit Profile pressed');
+                    router.push('/(onboarding)/instructor-profile');
+                    onClose();
+                  }}
+                >
                   <LinearGradient
                     colors={['#F708F7', '#C708F7']}
                     start={{ x: 0, y: 0 }}

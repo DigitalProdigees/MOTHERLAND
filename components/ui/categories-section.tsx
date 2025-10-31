@@ -20,7 +20,7 @@ const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   const categories = [
     { id: 'all', label: 'All Classes', icon: 'vector', isVector: true },
     { id: 'hip-hop', label: 'Hip-Hop', icon: 'hiphop', isVector: true },
-    { id: 'salsa', label: 'Salsa', icon: 'salsa', isVector: true },
+    { id: 'belly', label: 'Belly Dance', icon: 'salsa', isVector: true },
     { id: 'tap', label: 'Tap Dance', icon: 'tap', isVector: true },
     { id: 'swing', label: 'Swing', icon: 'swing', isVector: true },
     { id: 'jazz', label: 'Jazz Dance', icon: 'jazz', isVector: true },
@@ -82,15 +82,15 @@ const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                 <View style={styles.categoryIconContainer}>
                   {category.isVector ? (
                     <>
-                      {category.icon === 'vector' && <Icons.Vector width={35} height={35} marginLeft={5} marginRight={-8}/>}
-                      {category.icon === 'hiphop' && <Icons.HipHop width={35} height={35} marginLeft={9} marginRight={-8}/>}
-                      {category.icon === 'salsa' && <Icons.Salsa width={35} height={35} marginLeft={9} marginRight={-8}/>}
-                      {category.icon === 'ballet' && <Icons.Ballet width={35} height={35} marginLeft={9} marginRight={-8}/>}
-                      {category.icon === 'modern' && <Icons.Modern width={35} height={35} marginLeft={10} marginRight={-3}/>}
-                      {category.icon === 'swing' && <Icons.Swing width={40} height={40} marginLeft={9} marginRight={-8}/>}
-                      {category.icon === 'tap' && <Icons.Tap width={35} height={35} marginLeft={5} marginRight={-8}/>}
-                      {category.icon === 'jazz' && <Icons.Jazz width={35} height={35} marginLeft={1} marginRight={-12}/>}
-                      {category.icon === 'contemporary' && <Icons.Contemporary width={35} height={35} marginLeft={9} marginRight={-8}/>}
+                      {category.icon === 'vector' && <Icons.Vector width={35} height={35} marginLeft={5} marginRight={-8} />}
+                      {category.icon === 'hiphop' && <Icons.HipHop width={35} height={35} marginLeft={9} marginRight={-8} />}
+                      {category.icon === 'salsa' && <Icons.Salsa width={35} height={35} marginLeft={9} marginRight={-8} />}
+                      {category.icon === 'ballet' && <Icons.Ballet width={35} height={35} marginLeft={9} marginRight={-8} />}
+                      {category.icon === 'modern' && <Icons.Modern width={35} height={35} marginLeft={10} marginRight={-3} />}
+                      {category.icon === 'swing' && <Icons.Swing width={40} height={40} marginLeft={9} marginRight={-8} />}
+                      {category.icon === 'tap' && <Icons.Tap width={35} height={35} marginLeft={5} marginRight={-8} />}
+                      {category.icon === 'jazz' && <Icons.Jazz width={35} height={35} marginLeft={1} marginRight={-12} />}
+                      {category.icon === 'contemporary' && <Icons.Contemporary width={35} height={35} marginLeft={9} marginRight={-8} />}
 
                     </>
                   ) : (

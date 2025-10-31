@@ -1,10 +1,11 @@
 import Star from '@/assets/svg/Star';
 import GradientBackground from '@/components/ui/gradient-background';
+import ProfileAvatar from '@/components/ui/profile-avatar';
 import { Fonts } from '@/constants/theme';
-import { database } from '@/firebase.config';
+import { auth, database } from '@/firebase.config';
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { get, onValue, ref } from 'firebase/database';
+import { get, onValue, push, ref, remove } from 'firebase/database';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -38,11 +39,20 @@ interface ClassData {
   instructorId: string;
   instructorName: string;
   imageUrl: string;
+  mainImage?: string;
+  subImage1?: string;
+  subImage2?: string;
+  subImage3?: string;
+  subImage4?: string;
   rating: number;
   subscribers: number;
   availability: number;
   status: string;
   createdAt: string;
+  customTerms?: string;
+  customRequirements?: string;
+  customCancellation?: string;
+  termsEnabled?: boolean;
 }
 
 interface InstructorData {
@@ -62,6 +72,7 @@ interface ReviewData {
   userId: string;
   userName: string;
   userEmail: string;
+  userProfileImageUrl?: string;
   rating: number;
   description: string;
   createdAt: string;
@@ -72,6 +83,9 @@ export default function ClassDetailsScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { id } = useLocalSearchParams();
+  
+  console.log('🟡 CLASS DETAILS: Component rendered with id:', id);
+  
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -80,6 +94,7 @@ export default function ClassDetailsScreen() {
   const [instructorData, setInstructorData] = useState<InstructorData | null>(null);
   const [seatsAvailable, setSeatsAvailable] = useState(true);
   const [reviews, setReviews] = useState<ReviewData[]>([]);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Fetch class data from database with real-time listener
@@ -133,13 +148,19 @@ export default function ClassDetailsScreen() {
       
       if (instructorSnapshot.exists()) {
         const data = instructorSnapshot.val();
+        const profileImage =
+          data.profileImageUrl ||
+          data.profilePicture ||
+          data.profileImageUri ||
+          data.profileImage ||
+          '';
         setInstructorData({
           fullName: data.fullName || 'Instructor',
           email: data.email || '',
           signupYear: data.signupYear || new Date().getFullYear().toString(),
           experience: data.experience || '1 Year Experience',
           bio: data.bio || 'No bio available',
-          profileImage: data.profileImage || '',
+          profileImage,
           rating: data.rating || 0
         });
       }
@@ -176,6 +197,112 @@ export default function ClassDetailsScreen() {
     }
   };
 
+  // Check if class is bookmarked
+  const checkBookmarkStatus = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user || !id) return;
+
+      const favouritesRef = ref(database, `users/${user.uid}/favourites`);
+      const favouritesSnapshot = await get(favouritesRef);
+      
+      if (favouritesSnapshot.exists()) {
+        const favourites = favouritesSnapshot.val();
+        const isBookmarked = Object.values(favourites).some((fav: any) => fav.id === id);
+        setIsBookmarked(isBookmarked);
+      } else {
+        setIsBookmarked(false);
+      }
+    } catch (error) {
+      console.error('Error checking bookmark status:', error);
+    }
+  };
+
+  // Toggle bookmark
+  const handleBookmarkToggle = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user || !classData) {
+        Alert.alert('Error', 'You must be logged in to bookmark classes.');
+        return;
+      }
+
+      if (isBookmarked) {
+        // Remove from favourites
+        const favouritesRef = ref(database, `users/${user.uid}/favourites`);
+        const favouritesSnapshot = await get(favouritesRef);
+        
+        if (favouritesSnapshot.exists()) {
+          const favourites = favouritesSnapshot.val();
+          const favouriteEntries = Object.entries(favourites);
+          const favouriteToRemove = favouriteEntries.find(([_, fav]: [string, any]) => fav.id === id);
+          
+          if (favouriteToRemove) {
+            const [favouriteKey] = favouriteToRemove;
+            await remove(ref(database, `users/${user.uid}/favourites/${favouriteKey}`));
+            setIsBookmarked(false);
+            console.log('Removed from favourites');
+          }
+        }
+      } else {
+        // Add to favourites
+        const favouriteData = {
+          id: classData.id,
+          title: classData.title,
+          description: classData.description,
+          category: classData.category,
+          subscriberPrice: classData.subscriberPrice,
+          imageUrl: classData.imageUrl || classData.mainImage || '',
+          rating: classData.rating,
+          instructorName: classData.instructorName,
+          instructorId: classData.instructorId,
+          date: classData.date,
+          time: classData.time,
+          location: classData.location,
+          createdAt: new Date().toISOString(),
+        };
+
+        const favouritesRef = ref(database, `users/${user.uid}/favourites`);
+        await push(favouritesRef, favouriteData);
+        setIsBookmarked(true);
+        console.log('Added to favourites');
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      Alert.alert('Error', 'Failed to update bookmark. Please try again.');
+    }
+  };
+
+  // Clear selectedClassId from database 2 seconds after component mounts
+  useEffect(() => {
+    const clearNavigationState = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+        const snapshot = await get(navigationStateRef);
+        
+        if (snapshot.exists()) {
+          await remove(navigationStateRef);
+          console.log('🟡 CLASS DETAILS: Cleared selectedClassId from database after 1 second');
+        }
+      } catch (error) {
+        console.error('Error clearing navigation state:', error);
+      }
+    };
+
+    // Clear navigation state 1 second after mount
+    const timeoutId = setTimeout(() => {
+      clearNavigationState();
+    }, 1000);
+
+    // Cleanup timeout if component unmounts
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     
@@ -184,6 +311,7 @@ export default function ClassDetailsScreen() {
         unsubscribe = unsub;
       });
       fetchReviews(id as string);
+      checkBookmarkStatus();
     }
     
     // Cleanup listener on unmount
@@ -205,7 +333,7 @@ export default function ClassDetailsScreen() {
         return require('@/assets/images/contomeprorary.png');
       case 'jazz':
         return require('@/assets/images/jazz.png');
-      case 'salsa':
+      case 'belly':
         return require('@/assets/images/salsa.png');
       case 'swing':
         return require('@/assets/images/swing.png');
@@ -218,16 +346,27 @@ export default function ClassDetailsScreen() {
     }
   };
 
-  const carouselImages = classData ? [
-    classData.imageUrl ? { uri: classData.imageUrl } : require('@/assets/images/streetcard.png'),
-    require('@/assets/images/carousal1.png'),
-    require('@/assets/images/carousal2.png'),
-    require('@/assets/images/carousal3.png'),
-  ] : [
+  const carouselImages = classData ? (() => {
+    const images = [];
+    
+    // Add main image first
+    if (classData.mainImage) {
+      images.push({ uri: classData.mainImage });
+    } else if (classData.imageUrl && classData.imageUrl !== 'placeholder') {
+      images.push({ uri: classData.imageUrl });
+    } else {
+      images.push(require('@/assets/images/streetcard.png'));
+    }
+    
+    // Add sub images only if they exist
+    if (classData.subImage1) images.push({ uri: classData.subImage1 });
+    if (classData.subImage2) images.push({ uri: classData.subImage2 });
+    if (classData.subImage3) images.push({ uri: classData.subImage3 });
+    if (classData.subImage4) images.push({ uri: classData.subImage4 });
+    
+    return images;
+  })() : [
     require('@/assets/images/streetcard.png'),
-    require('@/assets/images/carousal1.png'),
-    require('@/assets/images/carousal2.png'),
-    require('@/assets/images/carousal3.png'),
   ];
 
   const handleBackPress = () => {
@@ -336,9 +475,9 @@ export default function ClassDetailsScreen() {
           />
         </Pressable>
         <Text style={styles.headerTitle}>Class Details</Text>
-        <Pressable style={styles.bookmarkButton}>
+        <Pressable style={styles.bookmarkButton} onPress={handleBookmarkToggle}>
           <Image 
-            source={require('@/assets/images/bookmark.png')}
+            source={isBookmarked ? require('@/assets/images/bookmark.png') : require('@/assets/images/bookmarkunfilled.png')}
             style={styles.bookmarkIcon}
             resizeMode="contain"
           />
@@ -364,7 +503,7 @@ export default function ClassDetailsScreen() {
                 key={index}
                 source={image}
                 style={styles.carouselImage}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             ))}
           </ScrollView>
@@ -588,6 +727,7 @@ export default function ClassDetailsScreen() {
           </View>
         </View>
 
+
         {/* Reviews Section */}
         <View style={styles.section}>
           <View style={styles.reviewsHeader}>
@@ -634,8 +774,10 @@ export default function ClassDetailsScreen() {
                 <View key={review.id} style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
                     <View style={styles.reviewUserInfo}>
-                      <Image 
-                        source={require('@/assets/images/annie-bens.png')}
+                      <ProfileAvatar
+                        imageUrl={review.userProfileImageUrl}
+                        fullName={review.userName}
+                        size={32}
                         style={styles.reviewAvatar}
                       />
                       <View style={styles.reviewUserDetails}>
@@ -1191,5 +1333,26 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.regular,
     color: '#666666',
     lineHeight: 20,
+  },
+  // Policy card styles
+  policyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  policyTitle: {
+    fontSize: 16,
+    fontFamily: Fonts.bold,
+    color: '#000000',
+    marginBottom: 12,
+  },
+  policyText: {
+    fontSize: 14,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+    lineHeight: 22,
   },
 });

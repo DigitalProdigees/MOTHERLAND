@@ -1,5 +1,6 @@
 import GradientBackground from '@/components/ui/gradient-background';
 import GradientButton from '@/components/ui/gradient-button';
+import ProfileAvatar from '@/components/ui/profile-avatar';
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
 import { useRouter } from 'expo-router';
@@ -108,18 +109,27 @@ export default function ProfileIndexScreen() {
           {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.profileImageContainer}>
-              {(userProfile?.profilePicture || userProfile?.profileImageUri) ? (
-                <Image 
-                  source={{ uri: userProfile.profilePicture || userProfile.profileImageUri }} 
-                  style={styles.profileImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.profileImagePlaceholder}>
-                  <Text style={styles.profileImageText}>👤</Text>
-                </View>
-              )}
-              <TouchableOpacity style={styles.editImageButton}>
+              <ProfileAvatar
+                imageUrl={userProfile?.profilePicture || userProfile?.profileImageUri}
+                fullName={userProfile?.fullName || 'User'}
+                size={120}
+                style={styles.profileImage}
+              />
+              <TouchableOpacity 
+                style={styles.editImageButton}
+                onPress={() => {
+                  if (!userProfile) return;
+                  router.push({
+                    pathname: '/(onboarding)/profile-info',
+                    params: {
+                      country: userProfile.country || '',
+                      state: userProfile.state || '',
+                      city: userProfile.city || '',
+                      profileImageUrl: userProfile.profilePicture || userProfile.profileImageUri || '',
+                    }
+                  });
+                }}
+              >
                 <Image 
                   source={require('@/assets/images/editable.png')} 
                   style={styles.editImageIcon}
@@ -211,7 +221,21 @@ export default function ProfileIndexScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Account Settings</Text>
               <View style={styles.sectionContent}>
-                <TouchableOpacity style={styles.settingRow}>
+                <TouchableOpacity 
+                  style={styles.settingRow}
+                  onPress={() => {
+                    if (!userProfile) return;
+                    router.push({
+                      pathname: '/(onboarding)/profile-info',
+                      params: {
+                        country: userProfile.country || '',
+                        state: userProfile.state || '',
+                        city: userProfile.city || '',
+                        profileImageUrl: userProfile.profilePicture || userProfile.profileImageUri || '',
+                      }
+                    });
+                  }}
+                >
                   <Text style={styles.settingLabel}>Edit Profile</Text>
                   <Text style={styles.settingArrow}>›</Text>
                 </TouchableOpacity>

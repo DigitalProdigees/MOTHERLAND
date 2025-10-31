@@ -1,10 +1,13 @@
 import Star from '@/assets/svg/Star';
+import ProfileAvatar from '@/components/ui/profile-avatar';
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { get, onValue, ref } from 'firebase/database';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -36,11 +39,20 @@ interface ClassData {
   instructorId: string;
   instructorName: string;
   imageUrl: string;
+  mainImage?: string;
+  subImage1?: string;
+  subImage2?: string;
+  subImage3?: string;
+  subImage4?: string;
   rating: number;
   subscribers: number;
   availability: number;
   status: string;
   createdAt: string;
+  customTerms?: string;
+  customRequirements?: string;
+  customCancellation?: string;
+  cancellationPolicyHeading?: string;
 }
 
 interface ReviewData {
@@ -50,6 +62,7 @@ interface ReviewData {
   userId: string;
   userName: string;
   userEmail: string;
+  userProfileImageUrl?: string;
   rating: number;
   description: string;
   createdAt: string;
@@ -68,6 +81,14 @@ export default function ClassDetailsScreen() {
   const [seatsAvailable, setSeatsAvailable] = useState(true);
   const [reviews, setReviews] = useState<ReviewData[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Bottom sheet refs for booking policies
+  const termsSheetRef = useRef<BottomSheet>(null);
+  const requirementsSheetRef = useRef<BottomSheet>(null);
+  const cancellationSheetRef = useRef<BottomSheet>(null);
+
+  // Snap points for bottom sheets
+  const snapPoints = useMemo(() => ['70%'], []);
 
   // Fetch class data from database with real-time listener
   const fetchClassData = async () => {
@@ -275,7 +296,7 @@ export default function ClassDetailsScreen() {
         return require('@/assets/images/contomeprorary.png');
       case 'jazz':
         return require('@/assets/images/jazz.png');
-      case 'salsa':
+      case 'belly':
         return require('@/assets/images/salsa.png');
       case 'swing':
         return require('@/assets/images/swing.png');
@@ -288,16 +309,27 @@ export default function ClassDetailsScreen() {
     }
   };
 
-  const carouselImages = classData ? [
-    classData.imageUrl ? { uri: classData.imageUrl } : require('@/assets/images/streetcard.png'),
-    require('@/assets/images/carousal1.png'),
-    require('@/assets/images/carousal2.png'),
-    require('@/assets/images/carousal3.png'),
-  ] : [
+  const carouselImages = classData ? (() => {
+    const images = [];
+    
+    // Add main image first
+    if (classData.mainImage) {
+      images.push({ uri: classData.mainImage });
+    } else if (classData.imageUrl && classData.imageUrl !== 'placeholder') {
+      images.push({ uri: classData.imageUrl });
+    } else {
+      images.push(require('@/assets/images/streetcard.png'));
+    }
+    
+    // Add sub images only if they exist
+    if (classData.subImage1) images.push({ uri: classData.subImage1 });
+    if (classData.subImage2) images.push({ uri: classData.subImage2 });
+    if (classData.subImage3) images.push({ uri: classData.subImage3 });
+    if (classData.subImage4) images.push({ uri: classData.subImage4 });
+    
+    return images;
+  })() : [
     require('@/assets/images/streetcard.png'),
-    require('@/assets/images/carousal1.png'),
-    require('@/assets/images/carousal2.png'),
-    require('@/assets/images/carousal3.png'),
   ];
 
   const handleBackPress = () => {
@@ -343,6 +375,19 @@ export default function ClassDetailsScreen() {
     const words = classData.description.split(' ');
     return words.length > 50;
   };
+
+  // Render backdrop for bottom sheets
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   if (loading) {
     return (
@@ -535,6 +580,54 @@ export default function ClassDetailsScreen() {
           )}
         </View>
 
+        {/* Booking Policies Section */}
+        {(classData.customTerms || classData.customRequirements || classData.customCancellation) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Booking Policies</Text>
+            <View style={styles.bookingCard}>
+              {/* Terms and Conditions */}
+              {classData.customTerms && (
+                <>
+                  <Pressable style={styles.bookingItem} onPress={() => termsSheetRef.current?.expand()}>
+                    <Text style={styles.bookingItemText}>Terms and Conditions</Text>
+                  </Pressable>
+                  {(classData.customRequirements || classData.customCancellation) && (
+                    <LinearGradient
+                      colors={['#F708F7', '#C708F7', '#F76B0B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.bookingDivider}
+                    />
+                  )}
+                </>
+              )}
+              
+              {/* Guest Requirements - Always show if available */}
+              {classData.customRequirements && (
+                <>
+                  <Pressable style={styles.bookingItem} onPress={() => requirementsSheetRef.current?.expand()}>
+                    <Text style={styles.bookingItemText}>Guest requirements</Text>
+                  </Pressable>
+                  {classData.customCancellation && (
+                    <LinearGradient
+                      colors={['#F708F7', '#C708F7', '#F76B0B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.bookingDivider}
+                    />
+                  )}
+                </>
+              )}
+              
+              {/* Cancellation Policy - Always show if available */}
+              {classData.customCancellation && (
+                <Pressable style={styles.bookingItem} onPress={() => cancellationSheetRef.current?.expand()}>
+                  <Text style={styles.bookingItemText}>Cancellation policy</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Reviews Section */}
         <View style={styles.section}>
@@ -580,8 +673,10 @@ export default function ClassDetailsScreen() {
                 <View key={review.id} style={styles.reviewCard}>
                   <View style={styles.reviewHeader}>
                     <View style={styles.reviewUserInfo}>
-                      <Image 
-                        source={require('@/assets/images/annie-bens.png')}
+                      <ProfileAvatar
+                        imageUrl={review.userProfileImageUrl}
+                        fullName={review.userName}
+                        size={32}
                         style={styles.reviewAvatar}
                       />
                       <View style={styles.reviewUserDetails}>
@@ -615,6 +710,137 @@ export default function ClassDetailsScreen() {
         </View>
 
       </ScrollView>
+
+      {/* Terms and Conditions Bottom Sheet */}
+      <BottomSheet
+        ref={termsSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        enablePanDownToClose
+        backdropComponent={renderBackdrop}
+        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.handleIndicator}
+      >
+        <View style={styles.bottomSheetContainer}>
+          <View style={styles.bottomSheetHeader}>
+            <Text style={styles.bottomSheetTitle}>Terms and Conditions</Text>
+            <Pressable style={styles.closeButton} onPress={() => termsSheetRef.current?.close()}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </Pressable>
+          </View>
+          <BottomSheetScrollView 
+            style={styles.bottomSheetScrollView}
+            contentContainerStyle={styles.bottomSheetContent}
+            showsVerticalScrollIndicator={true}
+          >
+            <Text style={styles.bottomSheetText}>{classData?.customTerms}</Text>
+            <View style={styles.bottomSheetFooter}>
+            <Pressable style={styles.doneButton} onPress={() => termsSheetRef.current?.close()}>
+              <LinearGradient
+                colors={['#F708F7', '#C708F7', '#F76B0B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.doneButtonGradient}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+          </BottomSheetScrollView>
+         
+        </View>
+      </BottomSheet>
+
+      {/* Guest Requirements Bottom Sheet */}
+      <BottomSheet
+        ref={requirementsSheetRef}
+        index={-1}
+        enableDynamicSizing={false}
+
+        snapPoints={snapPoints}
+        enablePanDownToClose
+        backdropComponent={renderBackdrop}
+        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.handleIndicator}
+      >
+        <View style={styles.bottomSheetContainer}>
+          <View style={styles.bottomSheetHeader}>
+            <Text style={styles.bottomSheetTitle}>Guest Requirements</Text>
+            <Pressable style={styles.closeButton} onPress={() => requirementsSheetRef.current?.close()}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </Pressable>
+          </View>
+          <BottomSheetScrollView 
+            style={styles.bottomSheetScrollView}
+            contentContainerStyle={styles.bottomSheetContent}
+            showsVerticalScrollIndicator={true}
+          >
+            <Text style={styles.bottomSheetText}>
+              {Array.isArray(classData?.customRequirements) 
+                ? classData.customRequirements.map((req: string, index: number) => `• ${req}`).join('\n')
+                : classData?.customRequirements}
+            </Text>
+            <View style={styles.bottomSheetFooter}>
+            <Pressable style={styles.doneButton} onPress={() => requirementsSheetRef.current?.close()}>
+              <LinearGradient
+                colors={['#F708F7', '#C708F7', '#F76B0B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.doneButtonGradient}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+          </BottomSheetScrollView>
+          
+        </View>
+      </BottomSheet>
+
+      {/* Cancellation Policy Bottom Sheet */}
+      <BottomSheet
+        ref={cancellationSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+
+        enablePanDownToClose
+        backdropComponent={renderBackdrop}
+        backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.handleIndicator}
+      >
+        <View style={styles.bottomSheetContainer}>
+          <View style={styles.bottomSheetHeader}>
+            <Text style={styles.bottomSheetTitle}>
+              {classData?.cancellationPolicyHeading || 'Cancellation Policy'}
+            </Text>
+            <Pressable style={styles.closeButton} onPress={() => cancellationSheetRef.current?.close()}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </Pressable>
+          </View>
+          <BottomSheetScrollView 
+            style={styles.bottomSheetScrollView}
+            contentContainerStyle={styles.bottomSheetContent}
+            showsVerticalScrollIndicator={true}
+          >
+            <Text style={styles.bottomSheetText}>{classData?.customCancellation}</Text>
+            <View style={styles.bottomSheetFooter}>
+            <Pressable style={styles.doneButton} onPress={() => cancellationSheetRef.current?.close()}>
+              <LinearGradient
+                colors={['#F708F7', '#C708F7', '#F76B0B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.doneButtonGradient}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+          </BottomSheetScrollView>
+        
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -627,10 +853,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 8,
-    
+    position: 'relative',
     paddingTop: 10,
     paddingBottom: 20,
   },
@@ -658,6 +884,10 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'absolute',
+    left: 8,
+    top: 10,
+    zIndex: 10,
   },
   backIcon: {
     width: 24,
@@ -978,5 +1208,99 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 2,
   },
-  
+  // Policy card styles
+  bookingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  bookingItem: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  bookingItemText: {
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+    color: '#000000',
+  },
+  bookingDivider: {
+    height: 1,
+    marginHorizontal:20,
+  },
+  // Bottom Sheet styles
+  bottomSheetBackground: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  handleIndicator: {
+    backgroundColor: '#CCCCCC',
+    width: 40,
+  },
+  bottomSheetContainer: {
+  },
+  bottomSheetScrollView: {
+    paddingBottom: 200,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomColor: '#E0E0E0',
+  },
+  bottomSheetTitle: {
+    fontSize: 20,
+    fontFamily: Fonts.bold,
+    color: '#000000',
+    flex: 1,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: '#666666',
+  },
+  bottomSheetContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 50,
+  },
+  bottomSheetText: {
+    fontSize: 14,
+    fontFamily: Fonts.regular,
+    color: '#333333',
+    lineHeight: 22,
+  },
+  bottomSheetFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopColor: '#E0E0E0',
+  },
+  doneButton: {
+    width: '100%',
+    height: 50,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  doneButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  doneButtonText: {
+    fontSize: 16,
+    fontFamily: Fonts.bold,
+    color: '#FFFFFF',
+  },
 });

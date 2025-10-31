@@ -1,9 +1,11 @@
 import GradientButton from '@/components/ui/gradient-button';
 import { Fonts, Icons } from '@/constants/theme';
-import { auth, database } from '@/firebase.config';
+import { auth, database, storage } from '@/firebase.config';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { onValue, ref, update } from 'firebase/database';
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { useEffect, useState } from 'react';
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,14 +52,13 @@ export default function InstructorProfileScreen() {
   // Class types data (from categories-section.tsx)
   const classTypes: ClassType[] = [
     { id: 'hip-hop', name: 'Hip-Hop' },
-    { id: 'salsa', name: 'Salsa' },
+    { id: 'belly', name: 'Belly Dance' },
     { id: 'ballet', name: 'Ballet Dance' },
     { id: 'modern', name: 'Modern Dance' },
     { id: 'swing', name: 'Swing' },
     { id: 'contemporary', name: 'Contemporary' },
     { id: 'tap', name: 'Tap Dance' },
     { id: 'jazz', name: 'Jazz Dance' },
-    { id: 'belly', name: 'Belly Dance' },
 
   ];
 
@@ -106,7 +107,8 @@ export default function InstructorProfileScreen() {
           // Prefill form with existing data
           setExperience(data.experience || '');
           setDescription(data.description || '');
-          setProfileImage(data.profileImageUri || null);
+          // Use profileImageUrl first, then fallback to profileImageUri
+          setProfileImage(data.profileImageUrl || data.profileImageUri || null);
           
           // Set country
           if (data.country) {
@@ -273,6 +275,32 @@ export default function InstructorProfileScreen() {
         return;
       }
 
+      let profileImageUrl = '';
+
+      if (profileImage && !profileImage.startsWith('http')) {
+        try {
+          console.log('Uploading instructor profile image...');
+          // Ensure JPEG and file:// URI
+          const manipulated = await ImageManipulator.manipulateAsync(
+            profileImage,
+            [],
+            { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          const response = await fetch(manipulated.uri);
+          const blob = await response.blob();
+          const filename = `users/${user.uid}/profile/${Date.now()}.jpg`;
+          const imageRef = storageRef(storage, filename);
+          await uploadBytes(imageRef, blob);
+          profileImageUrl = await getDownloadURL(imageRef);
+          console.log('Instructor profile image uploaded successfully:', profileImageUrl);
+        } catch (uploadError) {
+          console.error('Error uploading profile image:', uploadError);
+          Alert.alert('Warning', 'Failed to upload profile image. Profile will be saved without image.');
+        }
+      } else if (profileImage) {
+        profileImageUrl = profileImage;
+      }
+
       // Update user profile in Firebase Realtime Database
       const userRef = ref(database, `users/${user.uid}/personalInfo`);
       await update(userRef, {
@@ -282,7 +310,8 @@ export default function InstructorProfileScreen() {
         country: selectedCountry?.name || '',
         state: selectedState?.name || '',
         city: selectedCity?.name || '',
-        profileImageUri: profileImage || '',
+        profileImageUrl: profileImageUrl || '',
+        profileImageUri: profileImage || '', // Keep local URI as fallback
         profileCompleted: true,
         profileCompletedAt: new Date().toISOString(),
       });

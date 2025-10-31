@@ -23,7 +23,7 @@ const ForgotPassword: React.FC = () => {
   };
 
   const handleResendLink = () => {
-    router.push('/settings/reset-password');
+    router.push('/(home)/settings/reset-password');
   };
 
   return (

@@ -1116,3 +1116,157 @@
     margin: 0 auto;
   }
 }
+
+/* Booking Policies Section */
+.booking-policies-container {
+  margin-top: 20px;
+}
+
+.policies-toggle-button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(138, 83, 194, 0.08) 0%, rgba(247, 107, 11, 0.08) 100%);
+  border: 1px solid rgba(138, 83, 194, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.policies-toggle-button:hover {
+  background: linear-gradient(135deg, rgba(138, 83, 194, 0.12) 0%, rgba(247, 107, 11, 0.12) 100%);
+  border-color: rgba(138, 83, 194, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(138, 83, 194, 0.15);
+}
+
+.policies-toggle-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #8A53C2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.policies-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.policies-toggle-icon {
+  font-size: 24px;
+  font-weight: bold;
+  color: #8A53C2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.booking-policies-section {
+  margin-top: 12px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(138, 83, 194, 0.05) 0%, rgba(247, 107, 11, 0.05) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(138, 83, 194, 0.2);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.policies-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #8A53C2;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.policy-item {
+  background: white;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.policy-item:last-child {
+  margin-bottom: 0;
+}
+
+.policy-heading {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #8A53C2;
+}
+
+.policy-content {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+/* Mobile Responsive for Policies */
+@media (max-width: 768px) {
+  .policies-toggle-button {
+    padding: 14px 16px;
+  }
+
+  .policies-toggle-title {
+    font-size: 14px;
+  }
+
+  .policies-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .policies-toggle-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 20px;
+  }
+
+  .booking-policies-section {
+    padding: 16px;
+  }
+
+  .policies-title {
+    font-size: 16px;
+  }
+
+  .policy-heading {
+    font-size: 14px;
+  }
+
+  .policy-content {
+    font-size: 13px;
+  }
+}

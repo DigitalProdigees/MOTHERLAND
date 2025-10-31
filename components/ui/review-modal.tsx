@@ -4,16 +4,16 @@ import { auth, database } from '@/firebase.config';
 import { get, push, ref, set } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -120,19 +120,22 @@ export default function ReviewModal({ visible, onClose, classId, className, onRe
         return;
       }
 
-      // Get user's actual name from database
+      // Get user's actual name and profile image from database
       let actualUserName = 'Anonymous User';
+      let userProfileImageUrl = '';
       try {
-        const userProfileRef = ref(database, `users/${user.uid}/personalInfo/fullName`);
+        const userProfileRef = ref(database, `users/${user.uid}/personalInfo`);
         const userProfileSnapshot = await get(userProfileRef);
         if (userProfileSnapshot.exists()) {
-          actualUserName = userProfileSnapshot.val();
+          const userData = userProfileSnapshot.val();
+          actualUserName = userData.fullName || 'Anonymous User';
+          userProfileImageUrl = userData.profileImageUrl || userData.profileImageUri || '';
           console.log('Found user name in database:', actualUserName);
         } else {
-          console.log('No user name found in database, using Anonymous User');
+          console.log('No user profile found in database, using defaults');
         }
       } catch (error) {
-        console.log('Could not fetch user name from database:', error);
+        console.log('Could not fetch user profile from database:', error);
       }
 
       const reviewData = {
@@ -142,6 +145,7 @@ export default function ReviewModal({ visible, onClose, classId, className, onRe
         userId: user.uid,
         userName: actualUserName,
         userEmail: user.email || '',
+        userProfileImageUrl,
         rating,
         description: description.trim(),
         createdAt: new Date().toISOString(),

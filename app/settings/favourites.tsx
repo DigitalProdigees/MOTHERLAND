@@ -1,8 +1,11 @@
+import FavCard from '@/components/ui/fav-card';
 import { Fonts } from '@/constants/theme';
+import { auth, database } from '@/firebase.config';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import { onValue, ref, remove, set } from 'firebase/database';
+import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -12,99 +15,102 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
-
 interface FavouriteItem {
   id: string;
   title: string;
+  description: string;
+  category: string;
+  subscriberPrice: string;
+  imageUrl: string;
   rating: number;
-  price: string;
-  image: any;
+  instructorName: string;
+  instructorId: string;
+  date: string;
+  time: string;
+  location: string;
+  createdAt: string;
 }
-
-const favouritesData: FavouriteItem[] = [
-  {
-    id: '1',
-    title: 'Private Belly Dance Lesson',
-    rating: 5.0,
-    price: '$20',
-    image: require('@/assets/images/fav1.png'),
-  },
-  {
-    id: '2',
-    title: 'Private Reiki Sessions',
-    rating: 5.0,
-    price: '$75',
-    image: require('@/assets/images/fav2.png'),
-  },
-  {
-    id: '3',
-    title: 'Group Dance Session',
-    rating: 4.1,
-    price: '$15',
-    image: require('@/assets/images/post1.png'),
-  },
-];
-
-const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
-  const stars = [];
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 !== 0;
-
-  for (let i = 0; i < fullStars; i++) {
-    stars.push(
-      <Text key={i} style={styles.star}>
-        ★
-      </Text>
-    );
-  }
-
-  if (hasHalfStar) {
-    stars.push(
-      <Text key="half" style={styles.star}>
-        ☆
-      </Text>
-    );
-  }
-
-  return (
-    <View style={styles.ratingContainer}>
-      {stars}
-      <Text style={styles.ratingText}>{rating}</Text>
-    </View>
-  );
-};
-
-const FavouriteCard: React.FC<{ item: FavouriteItem }> = ({ item }) => {
-  return (
-    <View style={styles.card}>
-      <View style={styles.imageContainer}>
-        <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
-        <Pressable style={styles.bookmarkButton}>
-          <Image
-            source={require('@/assets/images/bookmark.png')}
-            style={styles.bookmarkIcon}
-            resizeMode="contain"
-          />
-        </Pressable>
-      </View>
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <View style={styles.cardFooter}>
-          <StarRating rating={item.rating} />
-          <Text style={styles.price}>{item.price}</Text>
-        </View>
-      </View>
-    </View>
-  );
-};
 
 export default function FavouritesScreen() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [favourites, setFavourites] = useState<Array<FavouriteItem & { key: string }>>([]);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const favouritesRef = ref(database, `users/${user.uid}/favourites`);
+    
+    const unsubscribe = onValue(favouritesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const favouritesData = snapshot.val();
+        const favouritesArray = Object.entries(favouritesData).map(([key, value]: [string, any]) => ({
+          key,
+          ...value,
+        }));
+        setFavourites(favouritesArray);
+      } else {
+        setFavourites([]);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const handleBackPress = () => {
     router.back();
   };
+
+  const handleClassPress = async (classId: string) => {
+    console.log('🔵 FAVOURITES: handleClassPress called with classId:', classId);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      // Save the class id to database for home/index.tsx to read
+      const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+      await set(navigationStateRef, classId);
+      console.log('🔵 FAVOURITES: Saved classId to database:', classId);
+      
+      // Navigate to home screen - it will read the id from database and redirect
+      router.push('/(home)/home');
+    } catch (error) {
+      console.error('Error saving class id to database:', error);
+    }
+  };
+
+  const handleRemoveFavourite = async (favouriteKey: string) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const favouriteRef = ref(database, `users/${user.uid}/favourites/${favouriteKey}`);
+      await remove(favouriteRef);
+    } catch (error) {
+      console.error('Error removing favourite:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8A53C2" />
+          <Text style={styles.loadingText}>Loading favourites...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -126,9 +132,27 @@ export default function FavouritesScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {favouritesData.map((item) => (
-          <FavouriteCard key={item.id} item={item} />
-        ))}
+        {favourites.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No favourites yet</Text>
+            <Text style={styles.emptySubText}>Start bookmarking classes you love!</Text>
+          </View>
+        ) : (
+          favourites.map((item) => (
+            <FavCard
+              key={item.key}
+              title={item.title}
+              price={item.subscriberPrice === 'Free' || item.subscriberPrice === 'free' ? '$0' : item.subscriberPrice}
+              instructor={item.instructorName}
+              rating={item.rating?.toString() || '0'}
+              students="0"
+              description={item.description || 'No description available'}
+              imageUrl={item.imageUrl}
+              onPress={() => handleClassPress(item.id)}
+              onRemove={() => handleRemoveFavourite(item.key)}
+            />
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -138,7 +162,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal:20,
   },
   header: {
     position: 'relative',
@@ -150,7 +173,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    alignSelf:'flex-start',
+    left: 16,
     top: 16,
     zIndex: 1,
   },
@@ -170,71 +193,34 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 20,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
   },
-  imageContainer: {
-    position: 'relative',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  cardImage: {
-    width: '100%',
-    height: 200,
-  },
-  bookmarkButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    padding: 8,
-  },
-  bookmarkIcon: {
-    width: 24,
-    height: 24,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  cardTitle: {
-    fontSize: 16,
+  emptyText: {
+    fontSize: 20,
     fontFamily: Fonts.bold,
     color: '#333333',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  star: {
+  emptySubText: {
     fontSize: 16,
-    color: '#8A53C2',
-    marginRight: 2,
+    fontFamily: Fonts.regular,
+    color: '#666666',
+    textAlign: 'center',
   },
-  ratingText: {
-    fontSize: 14,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    fontSize: 16,
     fontFamily: Fonts.medium,
-    color: '#333333',
-    marginLeft: 4,
-  },
-  price: {
-    fontSize: 18,
-    bottom:15,
-    fontWeight:'bold',
-    color: '#222222',
+    color: '#666666',
+    marginTop: 16,
   },
 });

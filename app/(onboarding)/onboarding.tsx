@@ -19,7 +19,7 @@ export default function OnboardingScreen() {
   const carouselData = [
     {
       title: 'Find Your Rhythm',
-      subtitle: 'Explore dance classes from top instructors in every style, from Hip Hop to Salsa.',
+      subtitle: 'Explore dance classes from top instructors in every style, from Hip Hop to Belly Dance.',
       imageSource: require('@/assets/images/carousal1.png'),
     },
     {

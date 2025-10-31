@@ -1,11 +1,13 @@
 import GradientButton from '@/components/ui/gradient-button';
 import Header from '@/components/ui/header';
 import { Fonts, Icons } from '@/constants/theme';
-import { auth, database } from '@/firebase.config';
+import { auth, database, storage } from '@/firebase.config';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ref, update } from 'firebase/database';
-import { useState } from 'react';
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
+import React, { useRef, useState } from 'react';
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,6 +28,13 @@ interface City {
 
 export default function ProfileInfoScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    country?: string;
+    state?: string;
+    city?: string;
+    profileImageUrl?: string;
+  }>();
+  console.log('ProfileInfo: received params', params);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [selectedState, setSelectedState] = useState<State | null>(null);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
@@ -33,6 +42,30 @@ export default function ProfileInfoScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userType, setUserType] = useState<string>('dancer');
+  const isEditMode = Boolean(params?.country || params?.state || params?.city || params?.profileImageUrl);
+
+  // Prefill from params when coming from profile screen
+  const hasPrefilledRef = useRef(false);
+  React.useEffect(() => {
+    if (hasPrefilledRef.current) return;
+    hasPrefilledRef.current = true;
+
+    const country = typeof params.country === 'string' ? params.country : undefined;
+    const state = typeof params.state === 'string' ? params.state : undefined;
+    const city = typeof params.city === 'string' ? params.city : undefined;
+    const rawImageParam = typeof params.profileImageUrl === 'string' ? params.profileImageUrl : undefined;
+    const imageUrl = rawImageParam ? decodeURIComponent(rawImageParam) : undefined;
+
+    console.log('ProfileInfo: prefill values', { country, state, city, imageUrl, rawImageParam });
+
+    if (country) setSelectedCountry({ name: country, code: '' });
+    if (state) setSelectedState({ name: state, code: '' });
+    if (city) setSelectedCity({ name: city, state: '' });
+    if (imageUrl) {
+      setProfileImage(imageUrl);
+      console.log('ProfileInfo: setProfileImage from params', imageUrl);
+    }
+  }, []);
   
   // Modal states
   const [showCountryModal, setShowCountryModal] = useState(false);
@@ -72,6 +105,35 @@ export default function ProfileInfoScreen() {
     { name: 'San Antonio', state: 'TX' },
     { name: 'San Diego', state: 'CA' },
   ];
+
+  const uploadImageToStorage = async (imageUri: string): Promise<string> => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Ensure we have a file:// URI and JPEG format before upload (avoids ph:// on iOS)
+      const manipulated = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const response = await fetch(manipulated.uri);
+      const blob = await response.blob();
+
+      const filename = `users/${user.uid}/profile/${Date.now()}.jpg`;
+      const imageRef = storageRef(storage, filename);
+
+      await uploadBytes(imageRef, blob);
+      const downloadURL = await getDownloadURL(imageRef);
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      throw error;
+    }
+  };
 
   const handleImagePicker = async () => {
     try {
@@ -192,13 +254,29 @@ export default function ProfileInfoScreen() {
         return;
       }
 
+      let profileImageUrl = '';
+
+      if (profileImage && !profileImage.startsWith('http')) {
+        try {
+          console.log('Uploading profile image...');
+          profileImageUrl = await uploadImageToStorage(profileImage);
+          console.log('Profile image uploaded successfully:', profileImageUrl);
+        } catch (uploadError) {
+          console.error('Error uploading profile image:', uploadError);
+          Alert.alert('Warning', 'Failed to upload profile image. Profile will be saved without image.');
+        }
+      } else if (profileImage) {
+        profileImageUrl = profileImage;
+      }
+
       // Update user profile in Firebase Realtime Database
       const userRef = ref(database, `users/${user.uid}/personalInfo`);
       await update(userRef, {
         country: selectedCountry?.name || '',
         state: selectedState?.name || '',
         city: selectedCity?.name || '',
-        profileImageUri: profileImage || '',
+        profileImageUrl: profileImageUrl || '',
+        profileImageUri: profileImage || '', // Keep local URI as fallback
         profileCompleted: true,
         profileCompletedAt: new Date().toISOString(),
       });
@@ -277,6 +355,9 @@ export default function ProfileInfoScreen() {
                 source={{ uri: profileImage }} 
                 style={styles.profileImage}
                 resizeMode="cover"
+                onLoadStart={() => console.log('ProfileInfo Image: load start', profileImage)}
+                onLoad={() => console.log('ProfileInfo Image: load success')}
+                onError={(e) => console.log('ProfileInfo Image: load error', e.nativeEvent)}
               />
             ) : (
               <View style={styles.profileImagePlaceholder}>
@@ -340,7 +421,7 @@ export default function ProfileInfoScreen() {
       {/* Next Button */}
       <View style={styles.buttonContainer}>
         <GradientButton
-          title={isLoading ? "Saving..." : "Next"}
+          title={isLoading ? "Saving..." : isEditMode ? "Save" : "Next"}
           onPress={handleNext}
           disabled={isLoading || !isFormValid}
         />

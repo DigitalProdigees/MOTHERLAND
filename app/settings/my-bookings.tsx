@@ -2,7 +2,7 @@ import ReviewModal from '@/components/ui/review-modal';
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
 import { useRouter } from 'expo-router';
-import { get, ref } from 'firebase/database';
+import { get, ref, set } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -75,9 +75,13 @@ const formatDateWithoutYear = (dateString: string) => {
 const BookingCard: React.FC<{ 
   item: BookingItem; 
   onReviewPress: (classId: string, className: string) => void;
-}> = ({ item, onReviewPress }) => {
+  onCardPress: (classId: string) => void;
+}> = ({ item, onReviewPress, onCardPress }) => {
   return (
-    <View style={styles.card}>
+    <Pressable 
+      style={styles.card}
+      onPress={() => onCardPress(item.classId)}
+    >
       <View style={styles.imageContainer}>
         <Image 
           source={
@@ -133,7 +137,12 @@ const BookingCard: React.FC<{
               styles.reviewButton, 
               item.hasReviewed && styles.reviewButtonDisabled
             ]}
-            onPress={() => !item.hasReviewed && onReviewPress(item.classId, item.classTitle)}
+            onPress={(e) => {
+              e.stopPropagation(); // Prevent card press when review button is pressed
+              if (!item.hasReviewed) {
+                onReviewPress(item.classId, item.classTitle);
+              }
+            }}
             disabled={item.hasReviewed}
           >
             <Image 
@@ -146,7 +155,7 @@ const BookingCard: React.FC<{
           </Pressable>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
@@ -251,6 +260,27 @@ export default function MyBookingsScreen() {
     fetchBookings();
   };
 
+  const handleCardPress = async (classId: string) => {
+    console.log('🔵 MY BOOKINGS: handleCardPress called with classId:', classId);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      // Save the class id to database for home/index.tsx to read
+      const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+      await set(navigationStateRef, classId);
+      console.log('🔵 MY BOOKINGS: Saved classId to database:', classId);
+      
+      // Navigate to home screen - it will read the id from database and redirect
+      router.push('/(home)/home');
+    } catch (error) {
+      console.error('Error saving class id to database:', error);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -290,6 +320,7 @@ export default function MyBookingsScreen() {
               key={item.id} 
               item={item} 
               onReviewPress={handleReviewPress}
+              onCardPress={handleCardPress}
             />
           ))
         ) : (

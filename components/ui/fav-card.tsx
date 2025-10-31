@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import ProfileAvatar from './profile-avatar';
 
-interface DanceClassCardProps {
+interface FavCardProps {
   title: string;
   price: string;
   instructor: string;
@@ -19,9 +19,10 @@ interface DanceClassCardProps {
   seatAvailability?: string;
   category?: string;
   onPress?: () => void;
+  onRemove?: () => void;
 }
 
-const DanceClassCard: React.FC<DanceClassCardProps> = ({
+const FavCard: React.FC<FavCardProps> = ({
   title,
   price,
   instructor,
@@ -36,6 +37,7 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
   seatAvailability,
   category,
   onPress,
+  onRemove,
 }) => {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
@@ -115,8 +117,25 @@ const DanceClassCard: React.FC<DanceClassCardProps> = ({
 
         {/* Right Content Section */}
         <View style={styles.content}>
-        {/* Title */}
-        <Text style={styles.title}>{title}</Text>
+        {/* Title Row with Bookmark Icon */}
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+          {onRemove && (
+            <Pressable 
+              style={styles.bookmarkButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+            >
+              <Image
+                source={require('@/assets/images/bookmark.png')}
+                style={styles.bookmarkIcon}
+                resizeMode="contain"
+              />
+            </Pressable>
+          )}
+        </View>
         
         {/* Price and Subscribers Row */}
         <View style={styles.priceRow}>
@@ -245,12 +264,26 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   title: {
     fontSize: 18,
     fontFamily: Fonts.bold,
     color: '#000000',
-    marginBottom: 8,
     lineHeight: 22,
+    flex: 1,
+    marginRight: 8,
+  },
+  bookmarkButton: {
+    padding: 4,
+  },
+  bookmarkIcon: {
+    width: 20,
+    height: 20,
   },
   priceRow: {
     flexDirection: 'row',
@@ -401,5 +434,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DanceClassCard;
+export default FavCard;
 

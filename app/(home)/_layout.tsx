@@ -1,16 +1,37 @@
 import CustomTabBar from '@/components/ui/custom-tab-bar';
+import ProfileAvatar from '@/components/ui/profile-avatar';
 import { Fonts } from '@/constants/theme';
-import { auth } from '@/firebase.config';
+import { auth, database } from '@/firebase.config';
 import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs, useRouter } from 'expo-router';
-import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { onValue, ref } from 'firebase/database';
+import React, { useEffect, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const DrawerNav = createDrawerNavigator();
 
 function DrawerContent() {
   const router = useRouter();
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+
+  // Fetch user profile data
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      const userRef = ref(database, `users/${user.uid}/personalInfo`);
+      const unsubscribe = onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setUserProfile(data);
+          setProfileImageUrl(data.profileImageUrl || data.profileImageUri || null);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, []);
+
   const go = (path: string) => () => router.push(path as any);
   
   const logout = async () => {
@@ -48,16 +69,30 @@ function DrawerContent() {
       >
         <View style={styles.profileRow}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={require('@/assets/images/annie-bens.png')}
+            <ProfileAvatar
+              imageUrl={profileImageUrl}
+              fullName={userProfile?.fullName || 'User'}
+              size={75}
               style={styles.profileImage}
-              resizeMode="cover"
             />
             <View style={styles.profileBorder} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.userName}>Jhon Dea</Text>
-            <Pressable style={styles.editProfileButton}>
+            <Text style={styles.userName}>{userProfile?.fullName || 'User'}</Text>
+            <TouchableOpacity 
+                onPress={() => {
+                  if (!userProfile) return;
+                  router.push({
+                    pathname: '/(onboarding)/profile-info',
+                    params: {
+                      country: userProfile.country || '',
+                      state: userProfile.state || '',
+                      city: userProfile.city || '',
+                      profileImageUrl: userProfile.profilePicture || userProfile.profileImageUri || '',
+                    }
+                  });
+                }}
+              >
               <LinearGradient
                 colors={['#F708F7', '#C708F7']}
                 start={{ x: 0, y: 0 }}
@@ -66,7 +101,7 @@ function DrawerContent() {
               >
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </LinearGradient>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
       </LinearGradient>
@@ -100,6 +135,7 @@ function DrawerContent() {
 }
 
 export default function HomeLayout() {
+  console.log('🔴 HOME LAYOUT (Drawer): Rendering');
   return (
     <DrawerNav.Navigator 
       screenOptions={{ 
@@ -112,13 +148,15 @@ export default function HomeLayout() {
     >
       <DrawerNav.Screen
         name="Tabs"
-        children={() => (
-          <Tabs
-            screenOptions={{
-              headerShown: false,
-            }}
-            tabBar={(props) => <CustomTabBar {...props} />}
-          >
+        children={() => {
+          console.log('🔴 HOME LAYOUT: Tabs children rendering');
+          return (
+            <Tabs
+              screenOptions={{
+                headerShown: false,
+              }}
+              tabBar={(props) => <CustomTabBar {...props} />}
+            >
             <Tabs.Screen
               name="home"
               options={{
@@ -144,7 +182,8 @@ export default function HomeLayout() {
               }}
             />
           </Tabs>
-        )}
+          );
+        }}
       />
     </DrawerNav.Navigator>
   );

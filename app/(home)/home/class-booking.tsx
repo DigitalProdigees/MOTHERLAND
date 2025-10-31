@@ -1,21 +1,24 @@
 
 import Star from '@/assets/svg/Star';
 import GradientBackground from '@/components/ui/gradient-background';
+import ProfileAvatar from '@/components/ui/profile-avatar';
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { get, onValue, push, ref, set } from 'firebase/database';
-import React, { useEffect, useState } from 'react';
+import { get, onValue, push, ref, remove, set } from 'firebase/database';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    Pressable,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -43,6 +46,11 @@ interface ClassData {
   status: string;
   createdAt: string;
   userListingId?: string;
+  customTerms?: string;
+  customRequirements?: string;
+  customCancellation?: string;
+  cancellationPolicyHeading?: string;
+  termsEnabled?: boolean;
 }
 
 interface InstructorData {
@@ -64,6 +72,33 @@ export default function ClassBookingScreen() {
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [instructorData, setInstructorData] = useState<InstructorData | null>(null);
   const [studentData, setStudentData] = useState<InstructorData | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  
+  // Bottom sheet refs for booking policies
+  const termsSheetRef = useRef<BottomSheet>(null);
+  const requirementsSheetRef = useRef<BottomSheet>(null);
+  const cancellationSheetRef = useRef<BottomSheet>(null);
+
+  // Checkbox states
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [requirementsChecked, setRequirementsChecked] = useState(false);
+  const [cancellationChecked, setCancellationChecked] = useState(false);
+
+  // Snap points for bottom sheets
+  const snapPoints = useMemo(() => ['75%'], []);
+
+  // Render backdrop
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   // Fetch class data from database with real-time listener
   const fetchClassData = async () => {
@@ -166,6 +201,9 @@ export default function ClassBookingScreen() {
     if (user) {
       fetchStudentData(user.uid);
     }
+
+    // Check bookmark status
+    checkBookmarkStatus();
     
     // Cleanup listener on unmount
     return () => {
@@ -207,6 +245,108 @@ export default function ClassBookingScreen() {
     if (!classData) return false;
     const words = classData.description.split(' ');
     return words.length > 50;
+  };
+
+  // Function to check if all policies are accepted
+  const areAllPoliciesAccepted = () => {
+    if (!classData) return true; // If no class data, allow booking
+    
+    let requiredCheckboxes = 0;
+    let checkedCount = 0;
+    
+    if (classData.customTerms) {
+      requiredCheckboxes++;
+      if (termsChecked) checkedCount++;
+    }
+    
+    if (classData.customRequirements) {
+      requiredCheckboxes++;
+      if (requirementsChecked) checkedCount++;
+    }
+    
+    if (classData.customCancellation) {
+      requiredCheckboxes++;
+      if (cancellationChecked) checkedCount++;
+    }
+    
+    // All required checkboxes must be checked
+    return requiredCheckboxes === 0 || checkedCount === requiredCheckboxes;
+  };
+
+  // Check if class is bookmarked
+  const checkBookmarkStatus = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user || !id) return;
+
+      const favouritesRef = ref(database, `users/${user.uid}/favourites`);
+      const favouritesSnapshot = await get(favouritesRef);
+      
+      if (favouritesSnapshot.exists()) {
+        const favourites = favouritesSnapshot.val();
+        const isBookmarked = Object.values(favourites).some((fav: any) => fav.id === id);
+        setIsBookmarked(isBookmarked);
+      } else {
+        setIsBookmarked(false);
+      }
+    } catch (error) {
+      console.error('Error checking bookmark status:', error);
+    }
+  };
+
+  // Toggle bookmark
+  const handleBookmarkToggle = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user || !classData) {
+        alert('You must be logged in to bookmark classes.');
+        return;
+      }
+
+      if (isBookmarked) {
+        // Remove from favourites
+        const favouritesRef = ref(database, `users/${user.uid}/favourites`);
+        const favouritesSnapshot = await get(favouritesRef);
+        
+        if (favouritesSnapshot.exists()) {
+          const favourites = favouritesSnapshot.val();
+          const favouriteEntries = Object.entries(favourites);
+          const favouriteToRemove = favouriteEntries.find(([_, fav]: [string, any]) => fav.id === id);
+          
+          if (favouriteToRemove) {
+            const [favouriteKey] = favouriteToRemove;
+            await remove(ref(database, `users/${user.uid}/favourites/${favouriteKey}`));
+            setIsBookmarked(false);
+            console.log('Removed from favourites');
+          }
+        }
+      } else {
+        // Add to favourites
+        const favouriteData = {
+          id: classData.id,
+          title: classData.title,
+          description: classData.description,
+          category: classData.category,
+          subscriberPrice: classData.subscriberPrice,
+          imageUrl: classData.imageUrl || '',
+          rating: classData.rating,
+          instructorName: classData.instructorName,
+          instructorId: classData.instructorId,
+          date: classData.date,
+          time: classData.time,
+          location: classData.location,
+          createdAt: new Date().toISOString(),
+        };
+
+        const favouritesRef = ref(database, `users/${user.uid}/favourites`);
+        await push(favouritesRef, favouriteData);
+        setIsBookmarked(true);
+        console.log('Added to favourites');
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      alert('Failed to update bookmark. Please try again.');
+    }
   };
 
   const handleConfirmPress = async () => {
@@ -342,7 +482,7 @@ export default function ClassBookingScreen() {
         return require('@/assets/images/contomeprorary.png');
       case 'jazz':
         return require('@/assets/images/jazz.png');
-      case 'salsa':
+      case 'belly':
         return require('@/assets/images/salsa.png');
       case 'swing':
         return require('@/assets/images/swing.png');
@@ -393,13 +533,13 @@ export default function ClassBookingScreen() {
           />
         </Pressable>
         <Text style={styles.headerTitle}>Booking</Text>
-        <Pressable style={styles.bookmarkButton}>
+        <View style={styles.bookmarkButton}>
           <Image 
-            source={require('@/assets/images/bookmark.png')}
+            source={isBookmarked ? require('@/assets/images/bookmark.png') : require('@/assets/images/bookmarkunfilled.png')}
             style={styles.bookmarkIcon}
             resizeMode="contain"
           />
-        </Pressable>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -461,10 +601,11 @@ export default function ClassBookingScreen() {
             <View style={styles.instructorRow}>
               <Text style={styles.instructorLabel}>Instructor:</Text>
               <View style={styles.instructorContainer}>
-                <Image 
-                  source={instructorData?.profileImage ? { uri: instructorData.profileImage } : require('@/assets/images/annie-bens.png')}
+                <ProfileAvatar
+                  imageUrl={instructorData?.profileImage}
+                  fullName={instructorData?.fullName || classData.instructorName}
+                  size={24}
                   style={styles.instructorAvatar}
-                  resizeMode="cover"
                 />
                 <Text style={styles.instructorName}>{instructorData?.fullName || classData.instructorName}</Text>
               </View>
@@ -482,6 +623,76 @@ export default function ClassBookingScreen() {
             </View>
           </View>
         </View>
+
+        {/* Booking Policies Section */}
+        {(classData.customTerms || classData.customRequirements || classData.customCancellation) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Booking Policies</Text>
+            <View style={styles.bookingCard}>
+              {/* Terms and Conditions - Show if customTerms exists (regardless of termsEnabled for viewing) */}
+              {classData.customTerms && (
+                <>
+                  <Pressable style={styles.bookingItem} onPress={() => termsSheetRef.current?.expand()}>
+                    <Text style={styles.bookingItemText}>Terms and Conditions</Text>
+                    {termsChecked && (
+                      <Image 
+                        source={require('@/assets/images/check.png')}
+                        style={styles.checkmarkIcon}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </Pressable>
+                  {(classData.customRequirements || classData.customCancellation) && (
+                    <LinearGradient
+                      colors={['#F708F7', '#C708F7', '#F76B0B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.bookingDivider}
+                    />
+                  )}
+                </>
+              )}
+              
+              {/* Guest Requirements - Always show if available */}
+              {classData.customRequirements && (
+                <>
+                  <Pressable style={styles.bookingItem} onPress={() => requirementsSheetRef.current?.expand()}>
+                    <Text style={styles.bookingItemText}>Guest requirements</Text>
+                    {requirementsChecked && (
+                      <Image 
+                        source={require('@/assets/images/check.png')}
+                        style={styles.checkmarkIcon}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </Pressable>
+                  {classData.customCancellation && (
+                    <LinearGradient
+                      colors={['#F708F7', '#C708F7', '#F76B0B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.bookingDivider}
+                    />
+                  )}
+                </>
+              )}
+              
+              {/* Cancellation Policy - Always show if available */}
+              {classData.customCancellation && (
+                <Pressable style={styles.bookingItem} onPress={() => cancellationSheetRef.current?.expand()}>
+                  <Text style={styles.bookingItemText}>Cancellation policy</Text>
+                  {cancellationChecked && (
+                    <Image 
+                      source={require('@/assets/images/check.png')}
+                      style={styles.checkmarkIcon}
+                      resizeMode="contain"
+                    />
+                  )}
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Schedule Section */}
         <View style={styles.section}>
@@ -596,17 +807,6 @@ export default function ClassBookingScreen() {
           </View>
         </View>
 
-        {/* Cancellation Policy Section */}
-        <View style={styles.section}>
-          <View style={styles.policyCard}>
-          <Text style={styles.sectionTitle}>Cancellation Policy</Text>
-
-            <Text style={styles.policyText}>
-              • Cancel before July 4 for a partial refund. After that, this reservation is non-refundable.
-            </Text>
-            <Text style={styles.learnMoreText}>Learn More</Text>
-          </View>
-        </View>
 
         {/* Host Confirmation Section */}
         <View style={styles.section}>
@@ -626,25 +826,195 @@ export default function ClassBookingScreen() {
         <Pressable 
           onPress={handleConfirmPress} 
           style={styles.confirmButtonContainer} 
-          disabled={booking || (classData && (classData.availableSeats || classData.availability || 0) <= 0)}
+          disabled={
+            booking || 
+            (classData && (classData.availableSeats || classData.availability || 0) <= 0) ||
+            !areAllPoliciesAccepted()
+          }
         >
           <GradientBackground style={[
             styles.confirmButton,
-            (classData && (classData.availableSeats || classData.availability || 0) <= 0) && styles.disabledConfirmButton
+            ((classData && (classData.availableSeats || classData.availability || 0) <= 0) || !areAllPoliciesAccepted()) && styles.disabledConfirmButton
           ]}>
             {booking ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <Text style={[
                 styles.confirmButtonText,
-                (classData && (classData.availableSeats || classData.availability || 0) <= 0) && styles.disabledConfirmButtonText
+                ((classData && (classData.availableSeats || classData.availability || 0) <= 0) || !areAllPoliciesAccepted()) && styles.disabledConfirmButtonText
               ]}>
-                {(classData && (classData.availableSeats || classData.availability || 0) <= 0) ? 'No seats available' : 'Confirm'}
+                {(classData && (classData.availableSeats || classData.availability || 0) <= 0) 
+                  ? 'No seats available' 
+                  : !areAllPoliciesAccepted()
+                  ? 'Accept all policies to continue'
+                  : 'Confirm'}
               </Text>
             )}
           </GradientBackground>
         </Pressable>
       </ScrollView>
+
+      {/* Terms and Conditions Bottom Sheet */}
+      {classData?.customTerms && (
+        <BottomSheet
+          ref={termsSheetRef}
+          enableDynamicSizing={false}
+          index={-1}
+          snapPoints={snapPoints}
+          enablePanDownToClose
+          backdropComponent={renderBackdrop}
+          backgroundStyle={styles.bottomSheetBackground}
+          handleIndicatorStyle={styles.handleIndicator}
+        >
+          <View style={styles.bottomSheetContainer}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>Terms and Conditions</Text>
+              <Pressable style={styles.closeButton} onPress={() => termsSheetRef.current?.close()}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </Pressable>
+            </View>
+            <BottomSheetScrollView 
+              style={styles.bottomSheetScrollView}
+              contentContainerStyle={styles.bottomSheetContent}
+              showsVerticalScrollIndicator={true}
+            >
+              <Text style={styles.bottomSheetText}>{classData?.customTerms}</Text>
+              <View style={styles.bottomSheetFooter}>
+              <Pressable 
+                style={styles.checkboxContainer} 
+                onPress={() => setTermsChecked(!termsChecked)}
+              >
+                <View style={[styles.checkbox, termsChecked && styles.checkboxChecked]}>
+                  {termsChecked && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>I have read and agree to the Terms and Conditions</Text>
+              </Pressable>
+              <Pressable style={styles.doneButton} onPress={() => termsSheetRef.current?.close()}>
+                <LinearGradient
+                  colors={['#F708F7', '#C708F7', '#F76B0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.doneButtonGradient}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+            </BottomSheetScrollView>
+           
+          </View>
+        </BottomSheet>
+      )}
+
+      {/* Guest Requirements Bottom Sheet */}
+      {classData?.customRequirements && (
+        <BottomSheet
+          ref={requirementsSheetRef}
+          enableDynamicSizing={false}
+          index={-1}
+          snapPoints={snapPoints}
+          enablePanDownToClose
+          backdropComponent={renderBackdrop}
+          backgroundStyle={styles.bottomSheetBackground}
+          handleIndicatorStyle={styles.handleIndicator}
+        >
+          <View style={styles.bottomSheetContainer}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>Guest Requirements</Text>
+              <Pressable style={styles.closeButton} onPress={() => requirementsSheetRef.current?.close()}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </Pressable>
+            </View>
+            <BottomSheetScrollView 
+              style={styles.bottomSheetScrollView}
+              contentContainerStyle={styles.bottomSheetContent}
+              showsVerticalScrollIndicator={true}
+            >
+              <Text style={styles.bottomSheetText}>
+                {Array.isArray(classData?.customRequirements) 
+                  ? classData.customRequirements.map((req: string, index: number) => `• ${req}`).join('\n')
+                  : classData?.customRequirements}
+              </Text>
+              <View style={styles.bottomSheetFooter}>
+              <Pressable 
+                style={styles.checkboxContainer} 
+                onPress={() => setRequirementsChecked(!requirementsChecked)}
+              >
+                <View style={[styles.checkbox, requirementsChecked && styles.checkboxChecked]}>
+                  {requirementsChecked && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>I have read and understand the Guest Requirements</Text>
+              </Pressable>
+              <Pressable style={styles.doneButton} onPress={() => requirementsSheetRef.current?.close()}>
+                <LinearGradient
+                  colors={['#F708F7', '#C708F7', '#F76B0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.doneButtonGradient}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+            </BottomSheetScrollView>
+          
+          </View>
+        </BottomSheet>
+      )}
+
+      {/* Cancellation Policy Bottom Sheet */}
+      {classData?.customCancellation && (
+        <BottomSheet
+          ref={cancellationSheetRef}
+          enableDynamicSizing={false}
+          index={-1}
+          snapPoints={snapPoints}
+          enablePanDownToClose
+          backdropComponent={renderBackdrop}
+          backgroundStyle={styles.bottomSheetBackground}
+          handleIndicatorStyle={styles.handleIndicator}
+        >
+          <View style={styles.bottomSheetContainer}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>
+                {classData?.cancellationPolicyHeading || 'Cancellation Policy'}
+              </Text>
+              <Pressable style={styles.closeButton} onPress={() => cancellationSheetRef.current?.close()}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </Pressable>
+            </View>
+            <BottomSheetScrollView 
+              style={styles.bottomSheetScrollView}
+              contentContainerStyle={styles.bottomSheetContent}
+              showsVerticalScrollIndicator={true}
+            >
+              <Text style={styles.bottomSheetText}>{classData?.customCancellation}</Text>
+              <View style={styles.bottomSheetFooter}>
+              <Pressable 
+                style={styles.checkboxContainer} 
+                onPress={() => setCancellationChecked(!cancellationChecked)}
+              >
+                <View style={[styles.checkbox, cancellationChecked && styles.checkboxChecked]}>
+                  {cancellationChecked && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>I have read and agree to the Cancellation Policy</Text>
+              </Pressable>
+              <Pressable style={styles.doneButton} onPress={() => cancellationSheetRef.current?.close()}>
+                <LinearGradient
+                  colors={['#F708F7', '#C708F7', '#F76B0B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.doneButtonGradient}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+            </BottomSheetScrollView>
+            
+          </View>
+        </BottomSheet>
+      )}
     </SafeAreaView>
   );
 }
@@ -991,18 +1361,138 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
   },
-  policyCard: {
+  bookingCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+    marginTop: 8,
   },
-  policyText: {
+  bookingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  bookingItemText: {
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+    color: '#000000',
+    flex: 1,
+  },
+  checkmarkIcon: {
+    width: 20,
+    height: 20,
+    marginLeft: 12,
+  },
+  bookingDivider: {
+    height: 1,
+  marginHorizontal:20,
+  },
+  // Bottom Sheet styles
+  bottomSheetBackground: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  handleIndicator: {
+    backgroundColor: '#CCCCCC',
+    width: 40,
+  },
+  bottomSheetContainer: {
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomColor: '#E0E0E0',
+  },
+  bottomSheetTitle: {
+    fontSize: 20,
+    fontFamily: Fonts.bold,
+    color: '#000000',
+    flex: 1,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: '#666666',
+  },
+  bottomSheetScrollView: {
+  },
+  bottomSheetContent: {
+    padding: 20,
+    paddingBottom:100,
+  },
+  bottomSheetText: {
     fontSize: 14,
     fontFamily: Fonts.regular,
-    color: '#000000',
-    lineHeight: 20,
+    color: '#333333',
+    lineHeight: 22,
+  },
+  bottomSheetFooter: {
+    paddingHorizontal: 20,
+    marginTop:20,
+    paddingVertical: 16,
+    borderTopColor: '#E0E0E0',
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    borderColor: '#8A53C2',
+    backgroundColor: '#8A53C2',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    fontFamily: Fonts.regular,
+    color: '#333333',
+    flex: 1,
+  },
+  doneButton: {
+    width: '100%',
+    height: 50,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  doneButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  doneButtonText: {
+    fontSize: 16,
+    fontFamily: Fonts.bold,
+    color: '#FFFFFF',
   },
   learnMoreText: {
     fontSize: 14,
@@ -1041,7 +1531,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#CCCCCC',
   },
   disabledConfirmButtonText: {
-    color: '#666666',
+    color: '#FFFFFF ',
   },
   // Loading and error states
   loadingContainer: {
