@@ -1,12 +1,12 @@
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { get, onValue, ref, remove } from 'firebase/database';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Import SVG components
 import Ballet from '@/assets/svg/Ballet';
@@ -93,8 +93,12 @@ interface UserBooking {
 export default function InstructorHomeScreen() {
   const router = useRouter();
   const navigation = useNavigation<any>();
+  const { id } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const [instructorProfile, setInstructorProfile] = useState<InstructorProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [checkingDatabase, setCheckingDatabase] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [activeTab, setActiveTab] = useState('classes');
   const [listings, setListings] = useState<ClassListing[]>([]);
   const [draftListings, setDraftListings] = useState<ClassListing[]>([]);
@@ -105,6 +109,86 @@ export default function InstructorHomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchAnim = React.useRef(new Animated.Value(0)).current; // 0: closed, 1: open
   const searchInputRef = React.useRef<TextInput>(null);
+
+  // Check navigation state from database (similar to home/index.tsx)
+  const checkNavigationState = async () => {
+    try {
+      setCheckingDatabase(true);
+      setIsRedirecting(false); // Reset redirecting state first
+      const user = auth.currentUser;
+      
+      if (!user) {
+        setCheckingDatabase(false);
+        setIsRedirecting(false);
+        return;
+      }
+
+      const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+      
+      // Use get to read once
+      const snapshot = await get(navigationStateRef);
+      
+      if (snapshot.exists()) {
+        const classId = snapshot.val();
+        console.log('🟢 INSTRUCTOR HOME: Found selectedClassId in database:', classId);
+        setIsRedirecting(true);
+        
+        // Navigate to class-details using navigation API - class-details.tsx will remove the ID after 1 second
+        (navigation as any).navigate('Tabs', {
+          screen: 'home',
+          params: {
+            screen: 'class-details',
+            params: { id: classId },
+          },
+        });
+      } else {
+        console.log('🟢 INSTRUCTOR HOME: No selectedClassId found in database, staying on home');
+        setIsRedirecting(false);
+      }
+    } catch (error) {
+      console.error('Error checking navigation state:', error);
+      setIsRedirecting(false);
+    } finally {
+      setCheckingDatabase(false);
+    }
+  };
+
+  // Reset redirecting state when screen comes into focus (e.g., when user navigates back)
+  useFocusEffect(
+    useCallback(() => {
+      // When screen comes into focus without an id param, reset redirecting state
+      if (!id) {
+        setIsRedirecting(false);
+        setCheckingDatabase(false);
+      }
+    }, [id])
+  );
+
+  // Check for navigation state on mount and URL params
+  useEffect(() => {
+    // Also check URL param id for backwards compatibility
+    if (id && !isRedirecting) {
+      console.log('🟢 INSTRUCTOR HOME: Redirecting to class-details with id param:', id);
+      setIsRedirecting(true);
+      setCheckingDatabase(false);
+      (navigation as any).navigate('Tabs', {
+        screen: 'home',
+        params: {
+          screen: 'class-details',
+          params: { id },
+        },
+      });
+    } else if (!id) {
+      // Check database if no URL param - check on every mount
+      // Reset redirecting state when no id param (user navigated back or normal mount)
+      setIsRedirecting(false);
+      checkNavigationState();
+    } else {
+      setCheckingDatabase(false);
+      setIsRedirecting(false); // Reset if id exists but we're not redirecting
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only depend on id, not isRedirecting
 
   // Function to fetch reviews for a specific class
   const fetchReviewsForClass = async (classId: string) => {
@@ -416,18 +500,25 @@ export default function InstructorHomeScreen() {
   const handleSearchPress = () => {
     console.log('Search pressed');
     if (!isSearchVisible) {
-      // Prepare initial state before animating open
+      // Stop any ongoing animation and reset to start position
       searchAnim.stopAnimation();
       searchAnim.setValue(0);
+      
+      // Set visible to render the component first
       setIsSearchVisible(true);
-      Animated.timing(searchAnim, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: false,
-      }).start(() => {
-        // Focus the input after opening animation starts/finishes to avoid flash
-        searchInputRef.current?.focus();
-      });
+      
+      // Use a small timeout to ensure the component is rendered before animating
+      // This allows React to apply the initial styles (width: 0, opacity: 0) first
+      setTimeout(() => {
+        Animated.timing(searchAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: false,
+        }).start(() => {
+          // Focus the input after opening animation completes
+          searchInputRef.current?.focus();
+        });
+      }, 5); // Small delay to ensure render cycle completes
     } else {
       // Blur before closing to dismiss keyboard smoothly
       searchInputRef.current?.blur();
@@ -835,6 +926,41 @@ export default function InstructorHomeScreen() {
     </Pressable>
   );
 
+  // Filter listings based on search query
+  const filteredListings = React.useMemo(() => {
+    const allListings = [...listings, ...draftListings];
+    
+    if (!searchQuery.trim()) {
+      return allListings;
+    }
+    
+    const query = searchQuery.toLowerCase().trim();
+    return allListings.filter(listing => 
+      listing.title.toLowerCase().includes(query)
+    );
+  }, [listings, draftListings, searchQuery]);
+
+  console.log('🟢 INSTRUCTOR HOME: About to render, isRedirecting:', isRedirecting, 'checkingDatabase:', checkingDatabase);
+  
+  // Show loader while checking database OR while redirecting to prevent flash
+  if (checkingDatabase || isRedirecting) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <LinearGradient
+            colors={['#F708F7', '#C708F7', '#F76B0B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.loadingGradient}
+          >
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Loading...</Text>
+          </LinearGradient>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -854,9 +980,9 @@ export default function InstructorHomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Pressable style={styles.menuButton} onPress={handleMenuPress}>
           <Image
             source={require('@/assets/images/insDrawer.png')}
@@ -916,7 +1042,7 @@ export default function InstructorHomeScreen() {
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: 100, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
@@ -942,14 +1068,18 @@ export default function InstructorHomeScreen() {
             </Pressable>
           </View>
 
-          {/* Render all listings (both published and drafts) sorted by creation date */}
-          {[...listings, ...draftListings].length > 0 ? (
-            [...listings, ...draftListings]
+          {/* Render all listings (both published and drafts) sorted by creation date, filtered by search */}
+          {filteredListings.length > 0 ? (
+            filteredListings
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
               .map(renderClassCard)
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No listings yet. Create your first class!</Text>
+              <Text style={styles.emptyStateText}>
+                {searchQuery.trim() 
+                  ? `No listings found matching "${searchQuery}"` 
+                  : 'No listings yet. Create your first class!'}
+              </Text>
             </View>
           )}
         </View>
@@ -1035,11 +1165,19 @@ const styles = StyleSheet.create({
   },
   // Header styles
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   menuButton: {
     padding: 8,

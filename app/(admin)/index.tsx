@@ -10,9 +10,7 @@ export default function AdminScreen() {
   // TODO: Before building for TestFlight/APK, update this to your deployed AdminFlow URL
   // Production URL format: 'https://your-adminflow-domain.com'
   // For local development/testing on real device, use your Mac's IP
-  const ADMIN_WEB_URL = __DEV__ 
-    ? 'http://192.168.30.216:3000'  // Development: local network
-    : 'https://YOUR_PRODUCTION_URL_HERE.com'; // Production: Deploy AdminFlow and update this
+  const ADMIN_WEB_URL = 'https://admin-flow-two.vercel.app/'
 
   const handleOpenWebDashboard = async () => {
     try {

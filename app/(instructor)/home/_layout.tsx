@@ -11,6 +11,7 @@ export default function InstructorHomeLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="add-class" />
+      <Stack.Screen name="class-details" />
     </Stack>
   );
 }

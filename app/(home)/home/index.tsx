@@ -3,22 +3,23 @@ import AppHeader from '@/components/ui/app-header';
 import CategoriesSection from '@/components/ui/categories-section';
 import FilterModal, { FilterOptions } from '@/components/ui/filter-modal';
 import GradientBackground from '@/components/ui/gradient-background';
-import SearchBar from '@/components/ui/search-bar';
+import SearchBar, { SearchBarRef } from '@/components/ui/search-bar';
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { get, ref } from 'firebase/database';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeIndexScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { id } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   
   console.log('🟢 HOME INDEX: Component rendered, id param:', id);
   
@@ -29,49 +30,64 @@ export default function HomeIndexScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [checkingDatabase, setCheckingDatabase] = useState(true);
+  const searchBarRef = useRef<SearchBarRef>(null);
 
   // Check database for selectedClassId on every mount
-  useEffect(() => {
-    const checkNavigationState = async () => {
-      try {
-        setCheckingDatabase(true);
-        const user = auth.currentUser;
-        
-        if (!user) {
-          setCheckingDatabase(false);
-          return;
-        }
-
-        const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
-        
-        // Use get to read once
-        const snapshot = await get(navigationStateRef);
-        
-        if (snapshot.exists()) {
-          const classId = snapshot.val();
-          console.log('🟢 HOME INDEX: Found selectedClassId in database:', classId);
-          setIsRedirecting(true);
-          
-          // Navigate to class-details using navigation API - class-details.tsx will remove the ID after 1 second
-          (navigation as any).navigate('Tabs', {
-            screen: 'home',
-            params: {
-              screen: 'class-details',
-              params: { id: classId },
-            },
-          });
-        } else {
-          console.log('🟢 HOME INDEX: No selectedClassId found in database, staying on home');
-          setIsRedirecting(false);
-        }
-      } catch (error) {
-        console.error('Error checking navigation state:', error);
+  const checkNavigationState = async () => {
+    try {
+      setCheckingDatabase(true);
+      setIsRedirecting(false); // Reset redirecting state first
+      const user = auth.currentUser;
+      
+      if (!user) {
+        setCheckingDatabase(false);
         setIsRedirecting(false);
-      } finally {
+        return;
+      }
+
+      const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+      
+      // Use get to read once
+      const snapshot = await get(navigationStateRef);
+      
+      if (snapshot.exists()) {
+        const classId = snapshot.val();
+        console.log('🟢 HOME INDEX: Found selectedClassId in database:', classId);
+        setIsRedirecting(true);
+        
+        // Navigate to class-details using navigation API - class-details.tsx will remove the ID after 1 second
+        (navigation as any).navigate('Tabs', {
+          screen: 'home',
+          params: {
+            screen: 'class-details',
+            params: { id: classId },
+          },
+        });
+      } else {
+        console.log('🟢 HOME INDEX: No selectedClassId found in database, staying on home');
+        setIsRedirecting(false);
+      }
+    } catch (error) {
+      console.error('Error checking navigation state:', error);
+      setIsRedirecting(false);
+    } finally {
+      setCheckingDatabase(false);
+    }
+  };
+
+  // Reset redirecting state when screen comes into focus (e.g., when user navigates back)
+  useFocusEffect(
+    useCallback(() => {
+      // When screen comes into focus without an id param, reset redirecting state
+      if (!id) {
+        setIsRedirecting(false);
         setCheckingDatabase(false);
       }
-    };
+    }, [id])
+  );
 
+  // Check for navigation state on mount and URL params
+  useEffect(() => {
     // Also check URL param id for backwards compatibility
     if (id && !isRedirecting) {
       console.log('🟢 HOME INDEX: Redirecting to class-details with id param:', id);
@@ -86,9 +102,12 @@ export default function HomeIndexScreen() {
       });
     } else if (!id) {
       // Check database if no URL param - check on every mount
+      // Reset redirecting state when no id param (user navigated back or normal mount)
+      setIsRedirecting(false);
       checkNavigationState();
     } else {
       setCheckingDatabase(false);
+      setIsRedirecting(false); // Reset if id exists but we're not redirecting
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]); // Only depend on id, not isRedirecting
@@ -101,6 +120,8 @@ export default function HomeIndexScreen() {
 
   const handleSearchPress = () => {
     console.log('Search pressed');
+    // Focus the search bar when search icon is clicked
+    searchBarRef.current?.focus();
   };
 
   const handleNotificationPress = () => {
@@ -219,8 +240,8 @@ export default function HomeIndexScreen() {
 
   console.log('🟢 HOME INDEX: About to render, isRedirecting:', isRedirecting, 'checkingDatabase:', checkingDatabase);
   
-  // Show loader while checking database
-  if (checkingDatabase) {
+  // Show loader while checking database OR while redirecting to prevent flash
+  if (checkingDatabase || isRedirecting) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <GradientBackground>
@@ -240,15 +261,15 @@ export default function HomeIndexScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <GradientBackground>
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
           
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
+          {/* Fixed Header */}
+          <LinearGradient
+            colors={['#F708F7', '#C708F7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.fixedHeader, { paddingTop: insets.top }]}
           >
             <AppHeader
               onMenuPress={handleMenuPress}
@@ -258,12 +279,21 @@ export default function HomeIndexScreen() {
             />
             
             <SearchBar
+              ref={searchBarRef}
               onPress={handleSearchBarPress}
               onFilterPress={handleFilterPress}
               onSearchChange={handleSearchChange}
               value={searchQuery}
             />
-            
+          </LinearGradient>
+          
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={[styles.scrollContent, { paddingTop: 200 }]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+          >
             {/* Active Filters Section */}
             {(searchQuery || selectedCategory !== 'all' || Object.keys(filters).length > 0) && (
               <LinearGradient
@@ -412,6 +442,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     paddingBottom:-40,
+  },
+  fixedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    overflow: 'hidden',
   },
   scrollView: {
     flex: 1,

@@ -1,7 +1,7 @@
 import { Fonts } from '@/constants/theme';
 import { auth, database } from '@/firebase.config';
 import { useRouter } from 'expo-router';
-import { get, ref } from 'firebase/database';
+import { get, ref, set } from 'firebase/database';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -70,9 +70,15 @@ const formatDateWithoutYear = (dateString: string) => {
   }
 };
 
-const OrderCard: React.FC<{ item: OrderItem }> = ({ item }) => {
+const OrderCard: React.FC<{ 
+  item: OrderItem; 
+  onCardPress: (classId: string) => void;
+}> = ({ item, onCardPress }) => {
   return (
-    <View style={styles.card}>
+    <Pressable 
+      style={styles.card}
+      onPress={() => onCardPress(item.classId)}
+    >
       <View style={styles.imageContainer}>
         <Image 
           source={
@@ -121,7 +127,7 @@ const OrderCard: React.FC<{ item: OrderItem }> = ({ item }) => {
           <Text style={styles.customerName}>{item.studentName}</Text></View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
@@ -170,6 +176,27 @@ export default function MyOrdersScreen() {
     router.back();
   };
 
+  const handleCardPress = async (classId: string) => {
+    console.log('🔵 MY ORDERS: handleCardPress called with classId:', classId);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      // Save the class id to database for instructor/home/index.tsx to read
+      const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+      await set(navigationStateRef, classId);
+      console.log('🔵 MY ORDERS: Saved classId to database:', classId);
+      
+      // Navigate to instructor home screen - it will read the id from database and redirect
+      router.push('/(instructor)/home');
+    } catch (error) {
+      console.error('Error saving class id to database:', error);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -203,7 +230,7 @@ export default function MyOrdersScreen() {
       >
         {orders.length > 0 ? (
           orders.map((item) => (
-            <OrderCard key={item.id} item={item} />
+            <OrderCard key={item.id} item={item} onCardPress={handleCardPress} />
           ))
         ) : (
           <View style={styles.emptyContainer}>

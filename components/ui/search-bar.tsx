@@ -1,5 +1,5 @@
 import { Fonts, Icons } from '@/constants/theme';
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface SearchBarProps {
@@ -10,7 +10,12 @@ interface SearchBarProps {
   value?: string;
 }
 
-const SearchBar: React.FC<SearchBarProps> = (props) => {
+export interface SearchBarRef {
+  focus: () => void;
+  blur: () => void;
+}
+
+const SearchBar = forwardRef<SearchBarRef, SearchBarProps>((props, ref) => {
   const { 
     onPress, 
     onFilterPress, 
@@ -20,6 +25,17 @@ const SearchBar: React.FC<SearchBarProps> = (props) => {
   } = props;
   
   const [searchText, setSearchText] = useState(value || '');
+  const textInputRef = React.useRef<TextInput>(null);
+  
+  // Expose focus and blur methods via ref
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textInputRef.current?.focus();
+    },
+    blur: () => {
+      textInputRef.current?.blur();
+    },
+  }));
   
   // Update search text when value prop changes
   useEffect(() => {
@@ -40,6 +56,7 @@ const SearchBar: React.FC<SearchBarProps> = (props) => {
           <Icons.Map width={29} height={29} />
           <Icons.Search width={25} height={25} />
           <TextInput
+            ref={textInputRef}
             style={styles.textInput}
             placeholder={placeholder}
             placeholderTextColor="#222222"
@@ -66,7 +83,9 @@ const SearchBar: React.FC<SearchBarProps> = (props) => {
       </View>
     </View>
   );
-};
+});
+
+SearchBar.displayName = 'SearchBar';
 
 const styles = StyleSheet.create({
   container: {

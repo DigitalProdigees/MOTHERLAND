@@ -19,7 +19,9 @@ export default function SplashScreen() {
             const userType = snapshot.val();
             
             // Simple navigation based on user type
-            if (userType === 'instructor') {
+            if (userType === 'Admin') {
+              router.replace('/(admin)');
+            } else if (userType === 'instructor') {
               router.replace('/(instructor)/home');
             } else {
               router.replace('/(home)/home');

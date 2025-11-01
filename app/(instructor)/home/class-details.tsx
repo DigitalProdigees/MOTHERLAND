@@ -6,7 +6,7 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { get, onValue, ref } from 'firebase/database';
+import { get, onValue, ref, remove } from 'firebase/database';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -284,6 +284,36 @@ export default function ClassDetailsScreen() {
       }
     };
   }, [id]);
+
+  // Clear selectedClassId from database 1 second after component mounts
+  useEffect(() => {
+    const clearNavigationState = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+        const snapshot = await get(navigationStateRef);
+        
+        if (snapshot.exists()) {
+          await remove(navigationStateRef);
+          console.log('🟡 INSTRUCTOR CLASS DETAILS: Cleared selectedClassId from database after 1 second');
+        }
+      } catch (error) {
+        console.error('Error clearing navigation state:', error);
+      }
+    };
+
+    // Clear navigation state 1 second after mount
+    const timeoutId = setTimeout(() => {
+      clearNavigationState();
+    }, 1000);
+
+    // Cleanup timeout if component unmounts
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   // Get category icon based on category
   const getCategoryIcon = (category: string) => {
@@ -879,14 +909,12 @@ const styles = StyleSheet.create({
     height: 24,
   },
   backButton: {
-    padding: 8,
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
     left: 8,
-    top: 10,
     zIndex: 10,
   },
   backIcon: {
