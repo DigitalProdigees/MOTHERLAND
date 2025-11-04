@@ -11,6 +11,7 @@ export default function HomeStackLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="class-details" />
       <Stack.Screen name="class-booking" />
+      <Stack.Screen name="add-post" />
       {/* Add more screens here as needed */}
     </Stack>
   );

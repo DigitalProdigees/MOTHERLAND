@@ -28,6 +28,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
   const [maxPrice, setMaxPrice] = useState(initialFilters?.maxPrice || '');
   const [minRating, setMinRating] = useState(initialFilters?.minRating || '');
   const [minAvailableSeats, setMinAvailableSeats] = useState(initialFilters?.minAvailableSeats || '');
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   // Bottom Sheet Ref
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -45,12 +46,30 @@ const FilterModal: React.FC<FilterModalProps> = ({
 
   // Handle opening and closing the bottom sheet based on visible prop
   useEffect(() => {
+    console.log('🟣 FILTER MODAL: visible prop changed to:', visible);
     if (visible) {
+      console.log('🟣 FILTER MODAL: Expanding bottom sheet');
       bottomSheetRef.current?.expand();
     } else {
+      console.log('🟣 FILTER MODAL: Closing bottom sheet');
       bottomSheetRef.current?.close();
     }
   }, [visible]);
+
+  // Listen to keyboard events
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const handleSheetClose = useCallback(() => {
     Keyboard.dismiss();
@@ -113,7 +132,15 @@ const FilterModal: React.FC<FilterModalProps> = ({
           </Pressable>
         </View>
 
-        <BottomSheetScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <BottomSheetScrollView 
+          style={styles.content} 
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: isKeyboardVisible ? 130 : 0 }
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
             {/* Price Range */}
             <View style={styles.filterSection}>
               <Text style={styles.filterLabel}>Price Range ($)</Text>
@@ -183,10 +210,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                 />
               </View>
             </View>
-        </BottomSheetScrollView>
-
-        {/* Footer Actions */}
-        <View style={styles.footer}>
+              <View style={styles.footer}>
           <Pressable style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
           </Pressable>
@@ -199,6 +223,10 @@ const FilterModal: React.FC<FilterModalProps> = ({
             />
           </View>
         </View>
+        </BottomSheetScrollView>
+
+        {/* Footer Actions */}
+      
       </View>
     </BottomSheet>
   );
@@ -241,9 +269,13 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   content: {
+  },
+  scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
+  
   },
+
   filterSection: {
     marginBottom: 24,
   },
@@ -317,7 +349,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
     marginBottom:19,
     gap: 12,
     borderTopColor: '#E0E0E0',

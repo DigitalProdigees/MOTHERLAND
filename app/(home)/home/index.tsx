@@ -32,7 +32,7 @@ export default function HomeIndexScreen() {
   const [checkingDatabase, setCheckingDatabase] = useState(true);
   const searchBarRef = useRef<SearchBarRef>(null);
 
-  // Check database for selectedClassId on every mount
+  // Check database for selectedClassId or selectedPostId on every mount
   const checkNavigationState = async () => {
     try {
       setCheckingDatabase(true);
@@ -45,9 +45,29 @@ export default function HomeIndexScreen() {
         return;
       }
 
-      const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
+      // Check for selectedPostId first
+      const postNavigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedPostId`);
+      const postSnapshot = await get(postNavigationStateRef);
       
-      // Use get to read once
+      if (postSnapshot.exists()) {
+        const postId = postSnapshot.val();
+        console.log('🟢 HOME INDEX: Found selectedPostId in database:', postId);
+        setIsRedirecting(true);
+        
+        // Navigate to add-post using navigation API - add-post.tsx will remove the ID after 1 second
+        (navigation as any).navigate('Tabs', {
+          screen: 'home',
+          params: {
+            screen: 'add-post',
+            params: { id: postId },
+          },
+        });
+        setCheckingDatabase(false);
+        return;
+      }
+
+      // Check for selectedClassId
+      const navigationStateRef = ref(database, `users/${user.uid}/navigationState/selectedClassId`);
       const snapshot = await get(navigationStateRef);
       
       if (snapshot.exists()) {
@@ -64,7 +84,7 @@ export default function HomeIndexScreen() {
           },
         });
       } else {
-        console.log('🟢 HOME INDEX: No selectedClassId found in database, staying on home');
+        console.log('🟢 HOME INDEX: No navigation state found in database, staying on home');
         setIsRedirecting(false);
       }
     } catch (error) {
@@ -115,7 +135,18 @@ export default function HomeIndexScreen() {
   const handleMenuPress = undefined; // AppHeader opens drawer via navigation
 
   const handleAddPress = () => {
-    console.log('Add pressed');
+    try {
+      (navigation as any).navigate('Tabs', {
+        screen: 'home',
+        params: {
+          screen: 'add-post',
+        },
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      // Fallback to router if navigation fails
+      router.push('/home/add-post');
+    }
   };
 
   const handleSearchPress = () => {
@@ -269,7 +300,13 @@ export default function HomeIndexScreen() {
             colors={['#F708F7', '#C708F7']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.fixedHeader, { paddingTop: insets.top }]}
+            style={[
+              styles.fixedHeader, 
+              { 
+                paddingTop: insets.top,
+                zIndex: showFilterModal ? 1 : 10,
+              }
+            ]}
           >
             <AppHeader
               onMenuPress={handleMenuPress}
@@ -423,17 +460,17 @@ export default function HomeIndexScreen() {
             />
           </ScrollView>
           
-          {/* Filter Modal */}
-          <FilterModal
-            visible={showFilterModal}
-            onClose={() => setShowFilterModal(false)}
-            onApplyFilters={handleApplyFilters}
-            initialFilters={filters}
-          />
-          
           {/* Drawer handled globally in (home)/_layout via navigator */}
         </SafeAreaView>
       </GradientBackground>
+      
+      {/* Filter Modal - Outside main container to ensure proper z-index */}
+      <FilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={handleApplyFilters}
+        initialFilters={filters}
+      />
     </GestureHandlerRootView>
   );
 }
@@ -448,7 +485,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 10,
     overflow: 'hidden',
   },
   scrollView: {
