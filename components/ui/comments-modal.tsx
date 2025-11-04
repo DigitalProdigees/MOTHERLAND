@@ -128,7 +128,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
         </BottomSheetScrollView>
 
         {/* Footer Input - Absolutely positioned */}
-        <View style={[styles.commentInputContainer, { bottom: keyboardHeight > 0 ? keyboardHeight +10 : 20 }]}>
+        <View style={[styles.commentInputContainer, { bottom: keyboardHeight > 0 ? keyboardHeight : 20 }]}>
           <TextInput
             style={styles.commentInput}
             placeholder="Write your comment"
